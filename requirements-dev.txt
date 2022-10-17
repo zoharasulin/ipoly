@@ -1,0 +1,8 @@
+twine
+pyarrow
+xlrd
+pandas
+scipy
+typeguard
+seaborn
+pylatex
