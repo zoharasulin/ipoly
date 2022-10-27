@@ -165,6 +165,11 @@ def load(
         elif file_format == "bmp":
             import imageio
             return imageio.v3.imread(file)
+        elif file_format == "json":
+            import json
+            with open(file) as user_file:
+                file_contents = user_file.read()
+            return json.loads(file_contents)
         else:
             print(
                 "I don't handle this file format yet, came back in a decade."
@@ -192,7 +197,7 @@ def load(
 
 @typechecked
 def save(
-        df: pd.DataFrame | np.ndarray,
+        object_to_save: pd.DataFrame | np.ndarray | dict,
         file: str,
         sheet="Data",
         keep_index=True,
@@ -208,24 +213,27 @@ def save(
             )
             raise Exception
         try:
-            df.to_excel(writer, sheet_name=sheet, index=keep_index)
+            object_to_save.to_excel(writer, sheet_name=sheet, index=keep_index)
         except IOError:
-            df.to_excel(writer, sheet_name=sheet, index=True)
-        # for column in df:
-        #    column_length = max(df[column].astype(str).map(len).max(), len(column))
-        #    col_idx = df.columns.get_loc(column)
+            object_to_save.to_excel(writer, sheet_name=sheet, index=True)
+        # for column in object_to_save:
+        #    column_length = max(object_to_save[column].astype(str).map(len).max(), len(column))
+        #    col_idx = object_to_save.columns.get_loc(column)
         #    writer.sheets[sheet].set_column(col_idx, col_idx, column_length)
         writer.save()
     elif file_format == "pkl":
-        pd.to_pickle(df, "./" + file)
+        pd.to_pickle(object_to_save, "./" + file)
     elif file_format == "parquet":
-        caster(df)
-        table = pa.Table.from_pandas(df, preserve_index=False)
+        caster(object_to_save)
+        table = pa.Table.from_pandas(object_to_save, preserve_index=False)
         pq.write_table(table, file + ".parquet")
     elif file_format == "png":
         from PIL import Image
-        im = Image.fromarray(df)
+        im = Image.fromarray(object_to_save)
         im.save(file)
+    elif file_format == "json":
+        with open(file, "w") as outfile:
+            outfile.write(object_to_save)
     else:
         print(
             "I don't handle this file format yet, came back in a decade."

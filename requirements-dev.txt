@@ -6,3 +6,5 @@ scipy
 typeguard
 seaborn
 pylatex
+opencv-python
+imageio

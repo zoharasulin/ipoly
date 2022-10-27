@@ -6,7 +6,7 @@ from pylatex import Document, Section, Subsection, Figure, Package, NoEscape, Su
 
 import os
 
-from ipoly.tracebackHandler import TracebackHandler
+from ipoly.ipoly.tracebackHandler import TracebackHandler
 
 available_functions = Literal['section', 'subsection', 'image', 'text', 'table']
 
