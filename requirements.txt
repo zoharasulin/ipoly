@@ -2,9 +2,14 @@ twine
 pyarrow
 xlrd
 pandas
+scikit-learn
 scipy
 typeguard
 seaborn
 pylatex
 opencv-python
 imageio
+openpyxl
+torch
+tensorflow
+nptyping

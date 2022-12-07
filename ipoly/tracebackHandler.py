@@ -3,7 +3,7 @@ from typing import Any
 
 from IPython import InteractiveShell
 
-from ipoly.ipoly.logger import Logger
+from ipoly.logger import Logger
 
 
 class Error(Exception):
