@@ -1,4 +1,5 @@
 import random
+import os
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -6,6 +7,7 @@ from pandas import DataFrame
 from typing import Iterable, Any, Tuple
 from sklearn import metrics
 from nptyping import NDArray, Int
+from plyer import notification
 
 
 def set_seed(seed: int = 42) -> None:
@@ -181,7 +183,7 @@ def plot(
 def say(message: str) -> None:
     from string import ascii_letters
 
-    if not all(
+    if all(
         char
         in ascii_letters
         + "0123456789,;:.?!-_ÂÃÄÀÁÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ"
@@ -205,6 +207,17 @@ def say(message: str) -> None:
             oss(f"spd-say '{message}' &")
         case syst:
             raise RuntimeError("Operating System '%s' is not supported" % syst)
+
+
+def notify(message: str, title: str = "Hey!") -> None:
+    notification.notify(
+        app_name="iPoly",
+        app_icon=os.path.join(os.path.dirname(__file__), r"img\ipoly.ico"),
+        title=title,
+        message=message,
+        ticker="iPoly ticker",
+        timeout=15,
+    )
 
 
 def path(path: str) -> str:
