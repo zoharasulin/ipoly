@@ -133,7 +133,6 @@ def load(
                 delimiter = detect(firstline, default=";")
                 myfile.close()
             extract = pd.read_csv(file, delimiter=delimiter)
-            detect("looks|like|the vertical bar\n is|the|delimiter\n")
 
             extract.dropna(how="all", inplace=True)
             if len(
