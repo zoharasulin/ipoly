@@ -332,6 +332,7 @@ def prepare_table(
     missing_columns_threshold: float = 0.6,
     categories_ratio_threshold: float = 0.1,
     id_correlation_threshold: float = 0.04,
+    verbose: bool = False,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Prepare the table to feed a ML model.
@@ -393,6 +394,8 @@ def prepare_table(
         # Drop a column if highly correlated with another one
         if not any(elem in couple for elem in y):
             df = df.drop(couple[0], axis=1)
+    if verbose:
+        print("")
     return interpolator(df.drop(y, axis=1)), df[y]
 
 
