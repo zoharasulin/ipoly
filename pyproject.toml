@@ -7,12 +7,10 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = ["ipoly"]
 
-[tool.setuptools-git-versioning]
-enabled = true
-
 [project]
 name = "ipoly"
+version = "0.0.0"
 readme = "README.md"
-dynamic = ["dependencies", "version"]
+dynamic = ["dependencies"]
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
