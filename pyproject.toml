@@ -8,7 +8,6 @@ build-backend = "setuptools.build_meta"
 packages = ["ipoly"]
 
 [project]
-name = "ipoly"
 readme = "README.md"
 dynamic = ["dependencies"]
 [tool.setuptools.dynamic]
