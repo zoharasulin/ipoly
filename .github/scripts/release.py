@@ -32,7 +32,7 @@ def create_new_patch_release():
     except subprocess.CalledProcessError as err:
         if err.stderr.decode("utf8").startswith("HTTP 404:"):
             # The project doesn't have any releases yet.
-            new_version_number = "0.0.1"
+            new_version_number = "0.1.2"
         else:
             raise
     else:
