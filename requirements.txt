@@ -1,4 +1,3 @@
-twine
 pyarrow
 xlrd
 pandas
