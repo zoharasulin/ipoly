@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2", "setuptools-git-versioning<2"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
@@ -7,10 +7,12 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = ["ipoly"]
 
+[tool.setuptools-git-versioning]
+enabled = true
+
 [project]
 name = "ipoly"
-version = "0.0.0"
 readme = "README.md"
-dynamic = ["dependencies"]
+dynamic = ["version", "dependencies"]
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
