@@ -1,26 +1,30 @@
 import random
-import numpy as np
-import tensorflow as tf
 import os
+import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-import pandas as pd
-import torch
+from pandas import DataFrame
 from typing import Iterable, Any, Tuple
 from sklearn import metrics
 from nptyping import NDArray, Int
-from keras import backend as K
+from plyer import notification
 
 
 def set_seed(seed: int = 42) -> None:
+    from tensorflow import random as tfr
+    from torch.backends import cudnn
+    from torch.cuda import manual_seed as cuda_manual_seed
+    from torch import manual_seed
+    from os import environ
+
     random.seed(seed)
     np.random.seed(seed)
-    os.environ["PYTHONHASHSEED"] = str(seed)
-    tf.random.set_seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    environ["PYTHONHASHSEED"] = str(seed)
+    tfr.set_seed(seed)
+    cuda_manual_seed(seed)
+    manual_seed(seed)
+    cudnn.deterministic = True
+    cudnn.benchmark = False
 
 
 def plot_history(history, keys: list[str] = None) -> None:
@@ -33,7 +37,7 @@ def plot_history(history, keys: list[str] = None) -> None:
         plot("model accuracy", "epoch", "accuracy")
 
 
-def plot_correlation_matrix(df: pd.DataFrame) -> None:
+def plot_correlation_matrix(df: DataFrame) -> None:
     corr = df.corr()
     # Generate a mask for the upper triangle
     mask = np.triu(np.ones_like(corr, dtype=bool))
@@ -56,7 +60,7 @@ def plot_correlation_matrix(df: pd.DataFrame) -> None:
 
 def _confusion_matrix(confusion_matrix, axes, class_names, fontsize=14):
 
-    df_cm = pd.DataFrame(
+    df_cm = DataFrame(
         confusion_matrix,
         index=class_names,
         columns=class_names,
@@ -123,9 +127,11 @@ def get_weighted_loss(pos_weights, neg_weights, epsilon=1e-7):
     Output :
         - loss : the loss classic function for the lost function.
     """
+    from keras import backend as K
+    from tensorflow import cast, float32
 
     def weighted_loss(y_true, y_pred):
-        y_true, y_pred = tf.cast(y_true, tf.float32), tf.cast(y_pred, tf.float32)
+        y_true, y_pred = cast(y_true, float32), cast(y_pred, float32)
         # initialize loss to zero
         loss = 0.0
 
@@ -172,3 +178,51 @@ def plot(
     else:
         plt.show()
     plt.close()
+
+
+def say(message: str) -> None:
+    from string import ascii_letters
+
+    if all(
+        char
+        in ascii_letters
+        + "0123456789,;:.?!-_ÂÃÄÀÁÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ"
+        for char in message
+    ):
+        raise Exception(
+            "This message will not be said because you used some symbols that may be used for doing some malicious injection :("
+        )
+    from platform import system as ps
+    from os import system as oss
+
+    match ps():
+        case "Windows":
+            from win32com.client import Dispatch
+
+            speak = Dispatch("SAPI.SpVoice").Speak
+            speak(message)
+        case "Darwin":
+            oss(f"say '{message}' &")
+        case "Linux":
+            oss(f"spd-say '{message}' &")
+        case syst:
+            raise RuntimeError("Operating System '%s' is not supported" % syst)
+
+
+def notify(message: str, title: str = "Hey!") -> None:
+    notification.notify(
+        app_name="iPoly",
+        app_icon=os.path.join(os.path.dirname(__file__), r"img\ipoly.ico"),
+        title=title,
+        message=message,
+        ticker="iPoly ticker",
+        timeout=15,
+    )
+
+
+def path(path: str) -> str:
+    from platform import system as ps
+
+    if ps() == "Windows":
+        return path.replace("/", "\\")
+    return path.replace("\\", "/")
