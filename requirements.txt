@@ -12,3 +12,6 @@ openpyxl
 torch
 tensorflow
 nptyping
+colorama
+IPython
+plyer
