@@ -7,8 +7,13 @@ import xlrd
 import pandas as pd
 import numpy as np
 import pyarrow as pa
-from scipy.interpolate import NearestNDInterpolator
 from colorama import Fore, Back, Style
+from collections import Counter
+import string
+import copy
+from typing import Optional, List
+
+SILLY_DELIMITERS = frozenset(string.ascii_letters + string.digits + ".")
 
 
 def caster(df: pd.DataFrame):
@@ -61,6 +66,34 @@ def load(
     classic_data=True,
     recursive=True,
 ):
+    """Load files or folders for most used file types.
+
+    Allowed file extensions are :
+        - csv
+        - xlsx
+        - xls
+        - txt
+        - png
+        - jpg
+        - pkl
+        - bmp
+        - xlsm
+        - json
+        - parquet
+
+
+    Args:
+        file: The file or folder name.
+            If it is a folder, all supported file types will be
+            loaded in a list.
+        sheet:
+        skiprows:
+        on:
+        classic_data:
+        recursive:
+
+    """
+
     split_path = file.split("/")
     if len(split_path) == 1:
         directory = "./"
@@ -307,98 +340,6 @@ def merge(
         return merge
 
 
-def interpolator(df: pd.DataFrame) -> pd.DataFrame:
-    array = np.array(df)
-    filled_array = array[~np.isnan(array).any(axis=1), :]
-    for i in range(array.shape[1]):
-        idxs = list(range(array.shape[1]))
-        idxs.pop(i)
-        my_interpolator = NearestNDInterpolator(
-            filled_array[:, idxs], filled_array[:, i], rescale=True
-        )
-        array[:, i] = np.apply_along_axis(
-            lambda row: my_interpolator(*row[idxs]) if np.isnan(row[i]) else row[i],
-            1,
-            array,
-        )
-    return caster(pd.DataFrame(array, columns=df.columns, index=df.index))
-
-
-def prepare_table(
-    df: pd.DataFrame,
-    y: str | list[str] = "",
-    correlation_threshold: float = 0.9,
-    missing_rows_threshold: float = 0.9,
-    missing_columns_threshold: float = 0.6,
-    categories_ratio_threshold: float = 0.1,
-    id_correlation_threshold: float = 0.04,
-    verbose: bool = False,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Prepare the table to feed a ML model.
-    :param df: str, Optional
-    :param y:
-    :param correlation_threshold:
-    :param missing_rows_threshold:
-    :param missing_columns_threshold:
-    :param categories_ratio_threshold:
-    :param id_correlation_threshold:
-    :return:
-    """
-    y = [y] if not y is list else y
-    category_columns = df.select_dtypes(include=["category", object]).columns
-    # Drop rows with NaNs in tye y columns
-    if y != [""]:
-        for col in y:
-            df = df[df[col].notna()]
-    # Drop the categorical columns with too much categories
-    df = df.drop(
-        [
-            col
-            for col in category_columns
-            if df[col].nunique() / len(df) > categories_ratio_threshold
-        ],
-        axis=1,
-    )
-    # Convert categorical data to numerical ones
-    df = pd.get_dummies(df)
-    # Drop columns with not enough data
-    df = df.loc[
-        :,
-        df.apply(
-            lambda col: (1 - col.count() / len(df.index)) < missing_columns_threshold,
-            axis=0,
-        ),
-    ]
-    # Drop rows with not enough data
-    df = df[
-        df.apply(
-            lambda row: (1 - row.count() / len(df.columns)) < missing_rows_threshold,
-            axis=1,
-        )
-    ]
-    correlate_couples = []
-    corr = df.corr().abs()
-    for col in corr:
-        for index, val in corr[col].items():
-            if val > correlation_threshold and (index != col):
-                if (index, col) not in correlate_couples:
-                    correlate_couples.append((col, index))
-        if (df[col].nunique() == df.shape[0]) and (
-            (corr[col].sum() - 1) / corr.shape[0] < id_correlation_threshold
-        ):  # TODO améliorer
-            # Drop ids columns (unique values with low correlations with other columns)
-            if not col in y:
-                df = df.drop(col, axis=1)
-    for couple in correlate_couples:
-        # Drop a column if highly correlated with another one
-        if not any(elem in couple for elem in y):
-            df = df.drop(couple[0], axis=1)
-    if verbose:
-        print("")
-    return interpolator(df.drop(y, axis=1)), df[y]
-
-
 def color(
     text: str,
     fg: Literal[
@@ -445,3 +386,103 @@ def color(
     bg = Back.__getattribute__(bg)
     colored_text = f"{Fore.__getattribute__(fg)}{text}{Style.RESET_ALL}"
     return colored_text if bg is None else bg + colored_text
+
+
+def _same(sequence):
+    elements = iter(sequence)
+    try:
+        first = next(elements)
+    except StopIteration:
+        return True
+    for el in elements:
+        if el != first:
+            return False
+    return True
+
+
+def detect(
+    text: str,
+    default: Optional[str] = None,
+    whitelist: Optional[List[str]] = None,
+    blacklist: Optional[List[str]] = SILLY_DELIMITERS,
+) -> Optional[str]:
+    r"""Detects the delimiter used in text formats such as CSV and its many counsins.
+
+    >>> detect(r"looks|like|the vertical bar\nis|the|delimiter\n")
+    '|'
+
+    `detect_delimiter.detect()` looks at the text provided to try to
+    find an uncommon delimiter, such as ` for whatever reason.
+
+    >>> detect('looks\x10like\x10something stupid\nis\x10the\x10delimiter')
+    '\x10'
+
+    When `detect()` doesn't know, it returns `None`:
+
+    >>> text = "not really any delimiters in here.\nthis is just text.\n"
+    >>> detect(text)
+
+    It's possible to provide a default, which will be used in that case:
+
+    >>> detect(text, default=',')
+    ','
+
+    By default, it will prevent avoid checking alpha-numeric characters
+    and the period/full stop character ("."). This can be adjusted via
+    the `blacklist` parameter.
+
+    If you believe that you know the delimiter, it's possible to provide
+    a list of possible delimiters to check for via the `whitelist` parameter.
+    If you don't provide a value, `[',', ';', ':', '|', '\t']` will be checked.
+    """
+
+    if whitelist:
+        candidates = whitelist
+    else:
+        candidates = list(",;:|\t")
+
+    sniffed_candidates = Counter()
+    likely_candidates = []
+
+    lines = []
+    # todo: support streaming
+    text_ = copy.copy(text)
+    while len(lines) < 5:
+        for line in text_.splitlines():
+            lines.append(line)
+
+    for c in candidates:
+        fields_for_candidate = []
+
+        for line in lines:
+            for char in line:
+                if char not in blacklist:
+                    sniffed_candidates[char] += 1
+            fields = line.split(c)
+            n_fields = len(fields)
+
+            # if the delimiter isn't present in the
+            # first line, it won't be present in the others
+            if n_fields == 1:
+                break
+            fields_for_candidate.append(n_fields)
+
+        if not fields_for_candidate:
+            continue
+
+        if _same(fields_for_candidate):
+            likely_candidates.append(c)
+
+    # no delimiter found
+    if not likely_candidates:
+        if whitelist is None and sniffed_candidates:
+            new_whitelist = [
+                char for (char, _count) in sniffed_candidates.most_common()
+            ]
+            return detect(text, whitelist=new_whitelist) or default
+        return default
+
+    if default in likely_candidates:
+        return default
+
+    return likely_candidates[0]

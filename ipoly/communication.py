@@ -5,6 +5,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Union
 import imaplib
+from plyer import notification
+import os
 
 
 def send(
@@ -113,3 +115,63 @@ def receive(receiver: str, password: str):
                 print(f"From: {mail_from}")
                 print(f"Subject: {mail_subject}")
                 print(f"Content: {mail_content}")
+
+
+def say(message: str) -> None:
+    """Make the computer say the message out loud.
+
+    This function works on Linux/Windows and Mac platforms.
+
+    Args:
+        message: The message the computer says.
+            For security, the characters used must be in this list:\n
+            0123456789,;:.?!-_ÂÃÄÀÁÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ
+
+    """
+
+    from string import ascii_letters
+
+    if all(
+        char
+        in ascii_letters
+        + "0123456789,;:.?!-_ÂÃÄÀÁÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ"
+        for char in message
+    ):
+        raise Exception(
+            "This message will not be said because you used some symbols that may be used for doing some malicious injection :("
+        )
+    from platform import system as ps
+    from os import system as oss
+
+    match ps():
+        case "Windows":
+            from win32com.client import Dispatch
+
+            speak = Dispatch("SAPI.SpVoice").Speak
+            speak(message)
+        case "Darwin":
+            oss(f"say '{message}' &")
+        case "Linux":
+            oss(f"spd-say '{message}' &")
+        case syst:
+            raise RuntimeError("Operating System '%s' is not supported" % syst)
+
+
+def notify(message: str, title: str = "Hey !") -> None:
+    """Send a notification.
+
+    This function works on Linux/Windows and Mac platforms and uses plyer in backend.
+
+    Args:
+        message: The message sent as a notification.
+        title: The title of the notification. Defaults to 'Hey !'.
+    """
+
+    notification.notify(
+        app_name="iPoly",
+        app_icon=os.path.join(os.path.dirname(__file__), r"img\ipoly.ico"),
+        title=title,
+        message=message,
+        ticker="iPoly ticker",
+        timeout=15,
+    )

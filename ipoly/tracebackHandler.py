@@ -8,6 +8,7 @@ from ipoly.logger import Logger
 
 class Error(Exception):
     """Base class for exceptions in this module."""
+
     pass
 
 
@@ -22,6 +23,7 @@ class TracebackHandler(Logger):
     :param debug: bool, default False
     :param kwargs:
     """
+
     def __init__(self, debug=False, **kwargs):
         _trace = None
         _ipython = None
@@ -56,6 +58,7 @@ class TracebackHandler(Logger):
         """
         Decorator method to deactivate temporarily the Traceback and restore it at the end of the decorated method.
         """
+
         def wrapper(self, *args, **kwargs):
             if not self._DEBUG and self._ipython is not None:
                 self._ipython.showtraceback = self._trace
@@ -72,4 +75,5 @@ class TracebackHandler(Logger):
     @staticmethod
     def _get_ipython() -> InteractiveShell:
         from IPython import get_ipython
+
         return get_ipython()

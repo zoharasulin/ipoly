@@ -1,5 +1,4 @@
 import random
-import os
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -7,7 +6,9 @@ from pandas import DataFrame
 from typing import Iterable, Any, Tuple
 from sklearn import metrics
 from nptyping import NDArray, Int
-from plyer import notification
+from scipy.interpolate import NearestNDInterpolator
+import pandas as pd
+from ipoly.file_management import caster
 
 
 def set_seed(seed: int = 42) -> None:
@@ -101,7 +102,18 @@ def plot_confusion_matrix(
         plt.show()
 
 
-def croper(image: np.array, margin: int = 18):
+def croper(image: np.array, margin: int = 18) -> np.array:
+    """Crop the white areason the borders of the input image.
+
+    Args:
+        image: The input image.
+        margin: The margin in pixels kept around the image.
+
+    Returns:
+        The cropped image.
+
+    """
+
     if len(np.unique(image)) == 1:
         raise Exception("The image is composed of a single color.")
     if len(image.shape) == 3:
@@ -118,8 +130,8 @@ def croper(image: np.array, margin: int = 18):
 
 
 def get_weighted_loss(pos_weights, neg_weights, epsilon=1e-7):
-    """
-    This function will calculate the loss function of the model
+    """This function will calculate the loss function of the model
+
     Input :
         - pos_weights : positive frequencies wights
         - neg_weights : negative frequencies wights
@@ -127,6 +139,7 @@ def get_weighted_loss(pos_weights, neg_weights, epsilon=1e-7):
     Output :
         - loss : the loss classic function for the lost function.
     """
+
     from keras import backend as K
     from tensorflow import cast, float32
 
@@ -180,49 +193,102 @@ def plot(
     plt.close()
 
 
-def say(message: str) -> None:
-    from string import ascii_letters
-
-    if all(
-        char
-        in ascii_letters
-        + "0123456789,;:.?!-_ÂÃÄÀÁÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ"
-        for char in message
-    ):
-        raise Exception(
-            "This message will not be said because you used some symbols that may be used for doing some malicious injection :("
-        )
-    from platform import system as ps
-    from os import system as oss
-
-    match ps():
-        case "Windows":
-            from win32com.client import Dispatch
-
-            speak = Dispatch("SAPI.SpVoice").Speak
-            speak(message)
-        case "Darwin":
-            oss(f"say '{message}' &")
-        case "Linux":
-            oss(f"spd-say '{message}' &")
-        case syst:
-            raise RuntimeError("Operating System '%s' is not supported" % syst)
-
-
-def notify(message: str, title: str = "Hey!") -> None:
-    notification.notify(
-        app_name="iPoly",
-        app_icon=os.path.join(os.path.dirname(__file__), r"img\ipoly.ico"),
-        title=title,
-        message=message,
-        ticker="iPoly ticker",
-        timeout=15,
-    )
-
-
 def path(path: str) -> str:
     from platform import system as ps
 
     if ps() == "Windows":
         return path.replace("/", "\\")
     return path.replace("\\", "/")
+
+
+def interpolator(df: pd.DataFrame) -> pd.DataFrame:
+    array = np.array(df)
+    filled_array = array[~np.isnan(array).any(axis=1), :]
+    for i in range(array.shape[1]):
+        idxs = list(range(array.shape[1]))
+        idxs.pop(i)
+        my_interpolator = NearestNDInterpolator(
+            filled_array[:, idxs], filled_array[:, i], rescale=True
+        )
+        array[:, i] = np.apply_along_axis(
+            lambda row: my_interpolator(*row[idxs]) if np.isnan(row[i]) else row[i],
+            1,
+            array,
+        )
+    return caster(pd.DataFrame(array, columns=df.columns, index=df.index))
+
+
+def prepare_table(
+    df: pd.DataFrame,
+    y: str | list[str] = "",
+    correlation_threshold: float = 0.9,
+    missing_rows_threshold: float = 0.9,
+    missing_columns_threshold: float = 0.6,
+    categories_ratio_threshold: float = 0.1,
+    id_correlation_threshold: float = 0.04,
+    verbose: bool = False,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Prepare the table to feed a ML model.
+    :param df: str, Optional
+    :param y:
+    :param correlation_threshold:
+    :param missing_rows_threshold:
+    :param missing_columns_threshold:
+    :param categories_ratio_threshold:
+    :param id_correlation_threshold:
+    :return:
+    """
+
+    y = [y] if not y is list else y
+    category_columns = df.select_dtypes(include=["category", object]).columns
+    # Drop rows with NaNs in tye y columns
+    if y != [""]:
+        for col in y:
+            df = df[df[col].notna()]
+    # Drop the categorical columns with too much categories
+    df = df.drop(
+        [
+            col
+            for col in category_columns
+            if df[col].nunique() / len(df) > categories_ratio_threshold
+        ],
+        axis=1,
+    )
+    # Convert categorical data to numerical ones
+    df = pd.get_dummies(df)
+    # Drop columns with not enough data
+    df = df.loc[
+        :,
+        df.apply(
+            lambda col: (1 - col.count() / len(df.index)) < missing_columns_threshold,
+            axis=0,
+        ),
+    ]
+    # Drop rows with not enough data
+    df = df[
+        df.apply(
+            lambda row: (1 - row.count() / len(df.columns)) < missing_rows_threshold,
+            axis=1,
+        )
+    ]
+    correlate_couples = []
+    corr = df.corr().abs()
+    for col in corr:
+        for index, val in corr[col].items():
+            if val > correlation_threshold and (index != col):
+                if (index, col) not in correlate_couples:
+                    correlate_couples.append((col, index))
+        if (df[col].nunique() == df.shape[0]) and (
+            (corr[col].sum() - 1) / corr.shape[0] < id_correlation_threshold
+        ):  # TODO améliorer
+            # Drop ids columns (unique values with low correlations with other columns)
+            if not col in y:
+                df = df.drop(col, axis=1)
+    for couple in correlate_couples:
+        # Drop a column if highly correlated with another one
+        if not any(elem in couple for elem in y):
+            df = df.drop(couple[0], axis=1)
+    if verbose:
+        print("")
+    return interpolator(df.drop(y, axis=1)), df[y]
