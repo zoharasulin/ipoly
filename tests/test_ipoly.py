@@ -1,7 +1,6 @@
 from pytest import raises
 from sys import path
 
-path.append("./")
 from ipoly import *
 
 

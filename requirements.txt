@@ -15,3 +15,4 @@ nptyping
 colorama
 IPython
 plyer
+librosa

@@ -1,7 +1,7 @@
 import re
 import os
 import glob
-from typing import Literal, Tuple
+from typing import Literal, Tuple, Iterable
 import pyarrow.parquet as pq
 import xlrd
 import pandas as pd
@@ -59,7 +59,7 @@ def caster(df: pd.DataFrame):
 
 
 def load(
-    file: str,
+    file: str | Iterable[str],
     sheet: int = 1,
     skiprows=None,
     on: str = "index",
@@ -80,7 +80,7 @@ def load(
         - xlsm
         - json
         - parquet
-
+        - wav
 
     Args:
         file: The file or folder name.
@@ -94,6 +94,10 @@ def load(
 
     """
 
+    if type(file) != str:
+        return [
+            load(elem, sheet, skiprows, on, classic_data, recursive) for elem in file
+        ]
     split_path = file.split("/")
     if len(split_path) == 1:
         directory = "./"
@@ -117,11 +121,12 @@ def load(
         )  # TODO check multi extension
         raise Exception
     elif len(files) == 0:
-        extract = pd.DataFrame()
         print("Warning : The file '" + file + "' wasn't found !")
-    else:
-        file = files[0].split(file)[0] + file
-        if file_format in ("xlsx", "xls", "xlsm"):
+        return pd.DataFrame()
+
+    file = files[0].split(file)[0] + file
+    match file_format:
+        case "xlsx" | "xls" | "xlsm":
             excel = pd.ExcelFile(file)
             sheets = excel.sheet_names
             try:
@@ -154,13 +159,11 @@ def load(
                 extract = caster(extract)
             extract.set_index(extract.columns[0])
             extract.drop(extract.columns[0], axis=1, inplace=True)
-        elif file_format == "pkl":
+        case "pkl":
             if not os.path.isfile(file):
                 print("The specified pickle file doesn't exist !")
             extract = pd.read_pickle(file)
-        elif file_format == "csv":
-            from detect_delimiter import detect
-
+        case "csv":
             with open(file) as myfile:
                 firstline = myfile.readline()
                 delimiter = detect(firstline, default=";")
@@ -183,9 +186,9 @@ def load(
                 if on != "index":
                     extract.dropna(subset=[on], inplace=True)
                 extract = caster(extract)
-        elif file_format == "parquet":
+        case "parquet":
             extract = pq.read_pandas(file).to_pandas()
-        elif file_format in ["png", "jpg"]:
+        case "png" | "jpg":
             from cv2 import imread
 
             img = imread(file)
@@ -194,45 +197,49 @@ def load(
             ).all():
                 return img[:, :, 0]
             return img
-        elif file_format == "bmp":
+        case "bmp":
             import imageio
 
             return imageio.v3.imread(file)
-        elif file_format == "json":
+        case "json":
             import json
 
             with open(file) as user_file:
                 file_contents = user_file.read()
             return json.loads(file_contents)
-        elif file_format == "txt":
+        case "txt":
             with open(file) as f:
                 lines = f.readlines()
             return lines
-        elif file_format == None:  # Directory
+        case "wav":
+            from librosa import load as librosa_load
+
+            return librosa_load(file, sr=None)
+        case None:  # Directory
             return [
                 load(elem, sheet, skiprows, on, classic_data, recursive)
                 for elem in glob.glob(file + "/*")
             ]
-        else:
+        case _:
             print("I don't handle this file format yet, came back in a decade.")
             raise Exception
-        if classic_data:
-            if on == "index":
-                extract = extract[~extract.index.duplicated(keep="first")]
-            elif (not (on in extract)) and (on != None):
-                print(
-                    "There is no column name '"
-                    + on
-                    + "' in the sheet "
-                    + str(sheet)
-                    + " of the file '"
-                    + file
-                    + "' so I can't load this file? Try to change the 'on' parameter"
-                )
-                raise Exception
-            else:
-                extract.drop_duplicates(subset=on, keep="last", inplace=True)
-            extract.replace("Null", np.nan, inplace=True)
+    if classic_data:
+        if on == "index":
+            extract = extract[~extract.index.duplicated(keep="first")]
+        elif (not (on in extract)) and (on != None):
+            print(
+                "There is no column name '"
+                + on
+                + "' in the sheet "
+                + str(sheet)
+                + " of the file '"
+                + file
+                + "' so I can't load this file? Try to change the 'on' parameter"
+            )
+            raise Exception
+        else:
+            extract.drop_duplicates(subset=on, keep="last", inplace=True)
+        extract.replace("Null", np.nan, inplace=True)
     return extract
 
 
@@ -241,7 +248,27 @@ def save(
     file: str,
     sheet="Data",
     keep_index=True,
-):  # FIXME column width when save excel
+):
+    """Save different object types to different file types.
+
+    Supported file types are:
+        - pkl
+        - parquet
+        - json
+        - xlsx
+        - png
+
+    Args:
+        file: The file name.
+        sheet: The sheet name the data is saved if saved in an excel.
+        keep_index: Keep the indexes in the saved file.
+
+    Raises:
+        Exception: If the file can't be accessed or the file type is
+        not supported.
+
+    """
+
     file_format = file.split(".")[-1]
     if file_format == "xlsx":
         try:
@@ -359,7 +386,7 @@ def color(
         "LIGHTMAGENTA",
         "LIGHTCYAN",
         "LIGHTWHITE",
-    ],
+    ] = "RED",
     bg: Literal[
         "BLACK",
         "RED",
@@ -379,13 +406,31 @@ def color(
         "LIGHTWHITE",
     ] = None,
 ) -> str:
-    if "LIGHT" in bg:
+    """Format the text to print it in color.
+
+    Args:
+        text: The input text to format.
+        fg: The foreground color.
+        bg: The background color.
+
+    Examples:
+        >>> "This is a " + color("blue text", "BLUE") + " !"
+        'This is a \\x1b[34mblue text\\x1b[0m !'
+
+        >>> print("This is a " + color("blue text", "BLUE") + " !")
+        This is a \x1b[34mblue text\x1b[0m !
+
+        >>> "This is a " + color("strange color", "GREEN", "WHITE") + " !"
+        'This is a \\x1b[47m\\x1b[32mstrange color\\x1b[0m !'
+
+    """
+
+    if bg and ("LIGHT" in bg):
         bg += "_EX"
     if "LIGHT" in fg:
         fg += "_EX"
-    bg = Back.__getattribute__(bg)
     colored_text = f"{Fore.__getattribute__(fg)}{text}{Style.RESET_ALL}"
-    return colored_text if bg is None else bg + colored_text
+    return colored_text if bg is None else Back.__getattribute__(bg) + colored_text
 
 
 def _same(sequence):

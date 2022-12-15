@@ -23,8 +23,11 @@ extensions = [
     "myst_parser",
     "sphinx.ext.autodoc",
     "sphinx_autodoc_typehints",
+    "sphinx.ext.autosummary",
 ]
 
+autosummary_generate = True
+autoclass_content = "both"
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]

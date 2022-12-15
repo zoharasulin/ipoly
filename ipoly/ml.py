@@ -12,6 +12,13 @@ from ipoly.file_management import caster
 
 
 def set_seed(seed: int = 42) -> None:
+    """Set the seed fot NumPy, TensorFlow and PyTorch.
+
+    Args:
+        seed: The seed value to set.
+
+    """
+
     from tensorflow import random as tfr
     from torch.backends import cudnn
     from torch.cuda import manual_seed as cuda_manual_seed
@@ -29,6 +36,15 @@ def set_seed(seed: int = 42) -> None:
 
 
 def plot_history(history, keys: list[str] = None) -> None:
+    """Plot the history of a Tensorflow training for each metrics.
+
+    Args:
+        history: The history to plot.
+        keys: List of all metrics that will be plot.Plot all metrics
+            if not specified.
+
+    """
+
     if keys is None:
         keys = history.history.keys()
     for key in keys:
@@ -39,6 +55,13 @@ def plot_history(history, keys: list[str] = None) -> None:
 
 
 def plot_correlation_matrix(df: DataFrame) -> None:
+    """Plot the correlation matrix of your DataFrame.
+
+    Args:
+        df: The input DataFrame.
+
+    """
+
     corr = df.corr()
     # Generate a mask for the upper triangle
     mask = np.triu(np.ones_like(corr, dtype=bool))
@@ -82,8 +105,21 @@ def _confusion_matrix(confusion_matrix, axes, class_names, fontsize=14):
 
 
 def plot_confusion_matrix(
-    y_pred: NDArray[Any, Int], y_true: NDArray[Any, Int], labels: Iterable[str]
+    y_pred: NDArray[Any, Int], y_true: NDArray[Any, Int], labels: Iterable[str] = None
 ):
+    """Plot the confusion matrix.
+
+    It determines by itself if it has to plot a simple confusion matrix
+    or multiple  ones in case of multilabel classification.
+
+    Args:
+        y_pred: Predicted logits.
+        y_true: True labels.
+        labels: Labels name. Need to be specified only if it is a
+            multilabel classification.
+
+    """
+
     fig, ax = plt.subplots(2, 2, figsize=(10, 7))
     if ((np.unique(y_true.sum(axis=1)) == 1).all()) or (len(y_true.shape) == 1):
         if len(y_true.shape) == 2:
@@ -130,14 +166,16 @@ def croper(image: np.array, margin: int = 18) -> np.array:
 
 
 def get_weighted_loss(pos_weights, neg_weights, epsilon=1e-7):
-    """This function will calculate the loss function of the model
+    """This function will compute the loss function of the model.
 
-    Input :
-        - pos_weights : positive frequencies wights
-        - neg_weights : negative frequencies wights
-        - epsilon : to not devide by 0
-    Output :
-        - loss : the loss classic function for the lost function.
+    Args:
+        pos_weights : Positive frequencies of weights.
+        neg_weights : Negative frequencies of weights.
+        epsilon : To not divide by 0.
+
+    Returns:
+        The loss classic function for the lost function.
+
     """
 
     from keras import backend as K

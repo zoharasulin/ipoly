@@ -20,14 +20,6 @@ ipoly.communication module
    :undoc-members:
    :show-inheritance:
 
-ipoly.detect\_delimiter module
-------------------------------
-
-.. automodule:: ipoly.detect_delimiter
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 ipoly.file\_management module
 -----------------------------
 

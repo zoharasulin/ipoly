@@ -17,6 +17,17 @@ def send(
     content: str,
     pngfiles: list[str] = (),
 ):
+    """Send an email to (a/some) receiver(s).
+
+    Args:
+        sender: The sender email. Gmail and Outlook emails are supported.
+        password: The sender's password.
+        receivers: List or single email of the receiver(s).
+        subject: The object of the email.
+        content: The main text part of the email.
+        pngfiles: List of attached files.
+
+    """
     msg = MIMEMultipart()
     msg["Subject"] = subject
     msg["From"] = sender
@@ -165,6 +176,7 @@ def notify(message: str, title: str = "Hey !") -> None:
     Args:
         message: The message sent as a notification.
         title: The title of the notification. Defaults to 'Hey !'.
+
     """
 
     notification.notify(
