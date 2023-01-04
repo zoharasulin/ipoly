@@ -553,8 +553,6 @@ def get_strategy(mixed_precision: bool = False, xla_accelerate: bool = False):
         else:
             policy = tf.keras.mixed_precision.experimental.Policy("mixed_float16")
         tf.keras.mixed_precision.set_policy(policy)
-
     if xla_accelerate:
         tf.config.optimizer.set_jit(True)
-    
     return strategy

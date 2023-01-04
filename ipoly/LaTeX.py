@@ -16,8 +16,6 @@ from pylatex import (
 
 import os
 
-from ipoly.tracebackHandler import TracebackHandler
-
 available_functions = Literal["section", "subsection", "image", "text", "table"]
 
 
@@ -25,7 +23,7 @@ def nothing(*_args, **_kwargs):
     pass
 
 
-class LaTeX(TracebackHandler):
+class LaTeX:
     """
     Class for creating pdf files easily from Python by writing LaTeX code and compiling it.
 
@@ -154,7 +152,6 @@ class LaTeX(TracebackHandler):
             func_chain = func(func_chain, *args, *kwargs)
         func_chain(nothing)
 
-    @TracebackHandler._traceback
     def add(self, func: available_functions, *args, mandatory: bool = True, **kwargs):
         funcs = {
             "section": self._section,
@@ -200,12 +197,10 @@ class LaTeX(TracebackHandler):
                 self._raiser(f"The extension of the file '{args[0]}' is not handled.")
         self.chain.append((funcs[func], args, kwargs))
 
-    @TracebackHandler._traceback
     def generate_pdf(self, filepath: str = None, compiler="pdfLaTeX"):
         self._chainer()
         self.doc.generate_pdf(filepath, clean_tex=True, compiler=compiler)
 
-    @TracebackHandler._traceback
     def generate_tex(self, filepath: str = None):
         self._chainer()
         self.doc.generate_tex(filepath)
