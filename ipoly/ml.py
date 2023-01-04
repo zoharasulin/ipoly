@@ -3,12 +3,12 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from pandas import DataFrame
-from typing import Iterable, Any, Tuple
+from typing import Iterable, Any, Tuple, Literal
 from sklearn import metrics
 from nptyping import NDArray, Int
-from scipy.interpolate import NearestNDInterpolator
 import pandas as pd
 from ipoly.file_management import caster
+import tensorflow as tf
 
 
 def set_seed(seed: int = 42) -> None:
@@ -240,6 +240,8 @@ def path(path: str) -> str:
 
 
 def interpolator(df: pd.DataFrame) -> pd.DataFrame:
+    from scipy.interpolate import NearestNDInterpolator
+
     array = np.array(df)
     filled_array = array[~np.isnan(array).any(axis=1), :]
     for i in range(array.shape[1]):
@@ -330,3 +332,229 @@ def prepare_table(
     if verbose:
         print("")
     return interpolator(df.drop(y, axis=1)), df[y]
+
+
+def get_optimizer(
+    type: Literal["Adam", "SGD", "RMSprop", "Adadelta", "Adamax", "Nadam", "Ftrl"],
+    learning_rate,
+):
+    from tensorflow import keras
+
+    match type:
+        case "Adam":
+            optimizer = keras.optimizers.Adam(learning_rate)
+        case "SGD":
+            optimizer = keras.optimizers.SGD(learning_rate)
+        case "RMSprop":
+            optimizer = keras.optimizers.RMSprop(learning_rate)
+        case "Adadelta":
+            optimizer = keras.optimizers.Adadelta(learning_rate)
+        case "Adadelta":
+            optimizer = keras.optimizers.Adagrad(learning_rate)
+        case "Adadelta":
+            optimizer = keras.optimizers.Adamax(learning_rate)
+        case "Adadelta":
+            optimizer = keras.optimizers.Nadam(learning_rate)
+        case "Adadelta":
+            optimizer = keras.optimizers.Ftrl(learning_rate)
+    return optimizer
+
+
+class SavePretrainedCallback(tf.keras.callbacks.Callback):
+    # Hugging Face models have a save_pretrained() method that saves both the weights and the necessary
+    # metadata to allow them to be loaded as a pretrained model in future. This is a simple Keras callback
+    # that saves the model with this method after each epoch.
+    def __init__(self, output_dir):
+        super().__init__()
+        self.output_dir = output_dir
+
+    def on_epoch_end(self, _epoch, _logs=None):
+        self.model.save_pretrained(self.output_dir)
+
+
+def get_callbacks(output_dir):
+    import tensorflow_addons as tfa
+    from datetime import datetime
+
+    def scheduler(_, lr):
+        return lr * tf.math.exp(-0.1)
+
+    scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
+    logdir = "logs/image/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(
+        log_dir=logdir, histogram_freq=1
+    )
+    return [
+        tensorboard_callback,
+        tfa.callbacks.TQDMProgressBar(),
+        tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=1),
+        scheduler,
+    ]
+
+
+def compile_model(model, optimizer_type, learning_rate, is_regression):
+    import tensorflow_addons as tfa
+
+    optimizer = get_optimizer(optimizer_type, learning_rate)
+
+    if is_regression:
+        loss_fn = tf.keras.losses.MeanSquaredError()
+        metrics = [tfa.metrics.F1Score(num_classes=2, average="micro")]
+    else:
+        loss_fn = tf.keras.losses.SparseCategoricalCrossentropy()
+        metrics = ["accuracy"]
+    model.compile(optimizer=optimizer, loss=loss_fn, metrics=metrics)
+    return model
+
+
+def load_transformers(
+    tokenizer_name,
+    config_name,
+    overwrite_output_dir,
+    output_dir,
+    num_labels,
+    model_name_or_path,
+    cache_dir,
+    model_revision,
+    use_auth_token,
+    config_changes: dict = None,
+):
+    from transformers import AutoConfig
+    from transformers import AutoTokenizer
+    from transformers import TFAutoModelForSequenceClassification
+    from transformers.utils import CONFIG_NAME, TF2_WEIGHTS_NAME
+    from os import listdir
+    from os.path import isdir
+
+    if not tokenizer_name:
+        tokenizer_name = model_name_or_path
+    if not config_name:
+        config_name = model_name_or_path
+
+    checkpoint = None
+    if isdir(output_dir) and len(listdir(output_dir)) > 0 and not overwrite_output_dir:
+        if (output_dir / CONFIG_NAME).is_file() and (
+            output_dir / TF2_WEIGHTS_NAME
+        ).is_file():
+            checkpoint = output_dir
+        else:
+            raise ValueError(
+                f"Output directory ({output_dir}) already exists and is not empty. "
+                "Use --overwrite_output_dir to continue regardless."
+            )
+
+    if checkpoint is not None:
+        config_path = output_dir
+    elif config_name:
+        config_path = config_name
+    else:
+        config_path = model_name_or_path
+    if num_labels is not None:
+        config = AutoConfig.from_pretrained(
+            config_path,
+            num_labels=num_labels,
+            cache_dir=cache_dir,
+            revision=model_revision,
+            use_auth_token=True if use_auth_token else None,
+        )
+    else:
+        config = AutoConfig.from_pretrained(
+            config_path,
+            cache_dir=cache_dir,
+            revision=model_revision,
+            use_auth_token=True if use_auth_token else None,
+        )
+    tokenizer = AutoTokenizer.from_pretrained(
+        tokenizer_name if tokenizer_name else model_name_or_path,
+        cache_dir=cache_dir,
+        revision=model_revision,
+        use_auth_token=True if use_auth_token else None,
+    )
+    if checkpoint is None:
+        model_path = model_name_or_path
+    else:
+        model_path = checkpoint
+    if config_changes:
+        for key, value in config_changes.items():
+            config.__setattr__(key, value)
+    try:
+        model = TFAutoModelForSequenceClassification.from_pretrained(
+            model_path,
+            config=config,
+            cache_dir=cache_dir,
+            revision=model_revision,
+            use_auth_token=True if use_auth_token else None,
+        )
+    except OSError:
+        model = TFAutoModelForSequenceClassification.from_pretrained(
+            model_path,
+            config=config,
+            from_pt=True,
+            cache_dir=cache_dir,
+            revision=model_revision,
+            use_auth_token=True if use_auth_token else None,
+        )
+    return model, tokenizer
+
+
+def flatten(l):
+    return [item for sublist in l for item in sublist]
+
+
+def compute_position(sentence: str | list, target: int, tokenizer):
+    """Compute the first token of the targeted word in the sentence"""
+    if type(sentence) == str:
+        sentence = sentence.split(" ")
+    position = 0
+    for i in range(target):
+        word = sentence[i]
+        if i == target:
+            break
+        position += len(tokenizer.encode(word)) - 2
+    return position + 2
+
+
+def train(model, train, val, epochs, output_dir="tensorboard_results"):
+    return model.fit(
+        train[0],
+        train[1],
+        validation_data=val,
+        epochs=epochs,
+        callbacks=get_callbacks(output_dir),
+    )
+
+
+def evaluate(model, train, val, test):
+    train_loss, train_metrics = model.evaluate(train[0], train[1])
+    val_loss, val_metrics = model.evaluate(val[0], val[1])
+    test_loss, test_metrics = model.evaluate(test[0], test[1])
+    return [
+        [train_loss, train_metrics],
+        [val_loss, val_metrics],
+        [test_loss, test_metrics],
+    ]
+
+
+def get_strategy(mixed_precision: bool = False, xla_accelerate: bool = False):
+    try:
+        tpu = tf.distribute.cluster_resolver.TPUClusterResolver()
+    except ValueError:
+        tpu = None
+
+    if tpu:
+        tf.config.experimental_connect_to_cluster(tpu)
+        tf.tpu.experimental.initialize_tpu_system(tpu)
+        strategy = tf.distribute.experimental.TPUStrategy(tpu)
+    else:
+        strategy = tf.distribute.get_strategy()
+    if mixed_precision:
+        if tpu:
+            policy = tf.keras.mixed_precision.experimental.Policy("mixed_bfloat16")
+        else:
+            policy = tf.keras.mixed_precision.experimental.Policy("mixed_float16")
+        tf.keras.mixed_precision.set_policy(policy)
+
+    if xla_accelerate:
+        tf.config.optimizer.set_jit(True)
+    
+    return strategy

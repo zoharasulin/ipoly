@@ -186,6 +186,8 @@ def load(
                 if on != "index":
                     extract.dropna(subset=[on], inplace=True)
                 extract = caster(extract)
+            extract.set_index(extract.columns[0])
+            extract.drop(extract.columns[0], axis=1, inplace=True)
         case "parquet":
             extract = pq.read_pandas(file).to_pandas()
         case "png" | "jpg":
@@ -209,7 +211,7 @@ def load(
             return json.loads(file_contents)
         case "txt":
             with open(file) as f:
-                lines = f.readlines()
+                lines = f.read().splitlines()
             return lines
         case "wav":
             from librosa import load as librosa_load
@@ -220,8 +222,10 @@ def load(
                 load(elem, sheet, skiprows, on, classic_data, recursive)
                 for elem in glob.glob(file + "/*")
             ]
-        case _:
-            print("I don't handle this file format yet, came back in a decade.")
+        case default:
+            print(
+                f"I don't handle this file format yet ({default}), came back in a decade."
+            )
             raise Exception
     if classic_data:
         if on == "index":
@@ -269,49 +273,53 @@ def save(
 
     """
 
-    file_format = file.split(".")[-1]
-    if file_format == "xlsx":
-        try:
-            writer = pd.ExcelWriter(file)
-        except PermissionError:
+    match file.split(".")[-1]:
+        case "xlsx":
+            try:
+                writer = pd.ExcelWriter(file)
+            except PermissionError:
+                print(
+                    "I can't access the file '" + file + "', the "
+                    "solution may be to close it and retry."
+                )
+                raise Exception
+            try:
+                object_to_save.to_excel(writer, sheet_name=sheet, index=keep_index)
+            except IOError:
+                object_to_save.to_excel(writer, sheet_name=sheet, index=True)
+            # for column in object_to_save:
+            #    column_length = max(object_to_save[column].astype(str).map(len).max(), len(column))
+            #    col_idx = object_to_save.columns.get_loc(column)
+            #    writer.sheets[sheet].set_column(col_idx, col_idx, column_length)
+            writer._save()
+        case "csv":
+            object_to_save.to_csv("./" + file, index=keep_index)
+        case "pkl":
+            pd.to_pickle(object_to_save, "./" + file)
+        case "parquet":
+            caster(object_to_save)
+            table = pa.Table.from_pandas(object_to_save, preserve_index=False)
+            pq.write_table(table, file + ".parquet")
+        case "png":
+            from PIL import Image
+
+            im = Image.fromarray(object_to_save)
+            im.save(file)
+        case "json":
+            with open(file, "w") as outfile:
+                outfile.write(object_to_save)
+        case default:
             print(
-                "I can't access the file '" + file + "', the "
-                "solution may be to close it and retry."
+                f"I don't handle this file format yet ({default}), came back in a decade."
             )
             raise Exception
-        try:
-            object_to_save.to_excel(writer, sheet_name=sheet, index=keep_index)
-        except IOError:
-            object_to_save.to_excel(writer, sheet_name=sheet, index=True)
-        # for column in object_to_save:
-        #    column_length = max(object_to_save[column].astype(str).map(len).max(), len(column))
-        #    col_idx = object_to_save.columns.get_loc(column)
-        #    writer.sheets[sheet].set_column(col_idx, col_idx, column_length)
-        writer.save()
-    elif file_format == "pkl":
-        pd.to_pickle(object_to_save, "./" + file)
-    elif file_format == "parquet":
-        caster(object_to_save)
-        table = pa.Table.from_pandas(object_to_save, preserve_index=False)
-        pq.write_table(table, file + ".parquet")
-    elif file_format == "png":
-        from PIL import Image
-
-        im = Image.fromarray(object_to_save)
-        im.save(file)
-    elif file_format == "json":
-        with open(file, "w") as outfile:
-            outfile.write(object_to_save)
-    else:
-        print("I don't handle this file format yet, came back in a decade.")
-        raise Exception
 
 
 def merge(
     df: pd.DataFrame,
     file: str | pd.DataFrame,
     sheet=1,
-    on="index",
+    on: str = "index",
     skiprows=None,
     how: str = "outer",
     save_file: bool = False,
@@ -335,13 +343,15 @@ def merge(
                 columns.remove(on)
             except ValueError:
                 print(
-                    "You can't merge your data as there are not column '"
+                    "You can't merge your data as there are no column '"
                     + on
                     + "' in your already loaded DataFrame."
                 )
                 raise Exception
         if df.empty:
             merge = dataBase.copy()
+        elif on != "index":
+            merge = dataBase.merge(df, how=how, on=on)
         else:
             merge = dataBase.merge(df, how=how, left_index=True, right_index=True)
         merge = merge.loc[:, ~merge.columns.duplicated()]

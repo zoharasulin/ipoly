@@ -7,3 +7,4 @@ with install_import_hook("ipoly"):
     from ipoly.logger import *
     from ipoly.tracebackHandler import *
     from ipoly.ml import *
+    from ipoly.scraping import *
