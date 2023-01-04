@@ -1,0 +1,35 @@
+﻿ipoly.tracebackHandler
+======================
+
+.. automodule:: ipoly.tracebackHandler
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      TracebackHandler
+   
+   
+
+   
+   
+   .. rubric:: Exceptions
+
+   .. autosummary::
+   
+      Error
+   
+   
+
+
+

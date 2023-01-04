@@ -1,0 +1,22 @@
+
+ipoly.tracebackHandler
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: ipoly.tracebackHandler
+
+.. currentmodule:: ipoly.tracebackHandler
+
+
+
+Error
+=====
+
+.. autoclass:: Error
+   :members:
+
+
+TracebackHandler
+================
+
+.. autoclass:: TracebackHandler
+   :members:

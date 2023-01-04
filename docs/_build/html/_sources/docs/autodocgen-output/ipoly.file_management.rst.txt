@@ -1,0 +1,34 @@
+﻿ipoly.file\_management
+======================
+
+.. automodule:: ipoly.file_management
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      caster
+      color
+      detect
+      load
+      merge
+      save
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

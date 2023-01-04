@@ -514,12 +514,13 @@ def compute_position(sentence: str | list, target: int, tokenizer):
     return position + 2
 
 
-def train(model, train, val, epochs, output_dir="tensorboard_results"):
+def train(model, train, val, epochs, batch_size, output_dir="tensorboard_results"):
     return model.fit(
         train[0],
         train[1],
         validation_data=val,
         epochs=epochs,
+        batch_size=batch_size,
         callbacks=get_callbacks(output_dir),
     )
 

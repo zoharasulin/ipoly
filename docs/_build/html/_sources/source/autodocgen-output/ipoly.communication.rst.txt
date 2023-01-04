@@ -1,0 +1,26 @@
+
+ipoly.communication
+~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: ipoly.communication
+
+.. currentmodule:: ipoly.communication
+
+
+
+send
+====
+
+.. autofunction:: send
+
+
+say
+===
+
+.. autofunction:: say
+
+
+notify
+======
+
+.. autofunction:: notify

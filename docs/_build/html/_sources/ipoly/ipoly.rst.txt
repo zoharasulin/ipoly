@@ -1,0 +1,18 @@
+
+ipoly
+~~~~~
+
+.. automodule:: ipoly
+
+.. currentmodule:: ipoly
+
+
+.. autosummary::
+  :toctree: ./
+
+  ipoly.LaTeX
+  ipoly.communication
+  ipoly.file_management
+  ipoly.logger
+  ipoly.ml
+  ipoly.tracebackHandler

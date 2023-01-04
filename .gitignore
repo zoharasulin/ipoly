@@ -130,3 +130,5 @@ dmypy.json
 
 /test_dev/
 *.ipynb
+
+!_build

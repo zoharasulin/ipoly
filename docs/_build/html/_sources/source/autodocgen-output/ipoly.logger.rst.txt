@@ -1,0 +1,15 @@
+
+ipoly.logger
+~~~~~~~~~~~~
+
+.. automodule:: ipoly.logger
+
+.. currentmodule:: ipoly.logger
+
+
+
+Logger
+======
+
+.. autoclass:: Logger
+   :members:

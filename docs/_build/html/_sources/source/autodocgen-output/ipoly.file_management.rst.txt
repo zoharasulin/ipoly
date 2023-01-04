@@ -1,0 +1,32 @@
+
+ipoly.file\_management
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: ipoly.file_management
+
+.. currentmodule:: ipoly.file_management
+
+
+
+load
+====
+
+.. autofunction:: load
+
+
+save
+====
+
+.. autofunction:: save
+
+
+color
+=====
+
+.. autofunction:: color
+
+
+detect
+======
+
+.. autofunction:: detect

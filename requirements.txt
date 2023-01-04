@@ -20,3 +20,4 @@ webdriver-manager
 selenium
 beautifulsoup4
 tensorflow-addons
+transformers

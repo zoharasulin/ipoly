@@ -24,6 +24,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx_autodoc_typehints",
     "sphinx.ext.autosummary",
+    "sphinx.ext.githubpages",
 ]
 
 autosummary_generate = True

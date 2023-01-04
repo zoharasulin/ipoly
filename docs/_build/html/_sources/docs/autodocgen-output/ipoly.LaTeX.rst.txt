@@ -1,0 +1,25 @@
+﻿ipoly.LaTeX
+===========
+
+.. currentmodule:: ipoly
+
+.. autoclass:: LaTeX
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~LaTeX.__init__
+      ~LaTeX.add
+      ~LaTeX.generate_pdf
+      ~LaTeX.generate_tex
+   
+   
+
+   
+   
+   

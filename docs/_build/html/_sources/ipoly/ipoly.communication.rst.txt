@@ -1,0 +1,32 @@
+﻿ipoly.communication
+===================
+
+.. automodule:: ipoly.communication
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      notify
+      receive
+      say
+      send
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

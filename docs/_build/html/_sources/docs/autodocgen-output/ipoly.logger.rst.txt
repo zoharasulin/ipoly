@@ -1,0 +1,29 @@
+﻿ipoly.logger
+============
+
+.. automodule:: ipoly.logger
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      Logger
+   
+   
+
+   
+   
+   
+
+
+
