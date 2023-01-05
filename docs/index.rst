@@ -9,8 +9,6 @@ Welcome to ipoly's documentation!
    readme
    license.rst
 
-.. automodapi:: source/modules
-
 
 Indices and tables
 ==================
