@@ -11,7 +11,7 @@ jobs:
           pip install sphinx furo myst_parser sphinx_autodoc_typehints
       - name: Sphinx build
         run: |
-          make html
+          cd docs && make html
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
