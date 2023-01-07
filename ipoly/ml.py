@@ -166,7 +166,7 @@ def croper(image: np.array, margin: int = 18) -> np.array:
 
 
 def get_weighted_loss(pos_weights, neg_weights, epsilon=1e-7):
-    """This function will compute the loss function of the model.
+    """Compute the loss function of the model.
 
     Args:
         pos_weights : Positive frequencies of weights.
@@ -268,16 +268,12 @@ def prepare_table(
     id_correlation_threshold: float = 0.04,
     verbose: bool = False,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Prepare the table to feed a ML model.
-    :param df: str, Optional
-    :param y:
-    :param correlation_threshold:
-    :param missing_rows_threshold:
-    :param missing_columns_threshold:
-    :param categories_ratio_threshold:
-    :param id_correlation_threshold:
-    :return:
+    """Prepare the table to feed a ML model.
+
+    Args:
+        df : The DaaFrame to prepare for Machine Learning.
+        y : Column(s) name(s) of target variable(s).
+
     """
 
     y = [y] if not y is list else y
@@ -372,7 +368,9 @@ class SavePretrainedCallback(tf.keras.callbacks.Callback):
         self.model.save_pretrained(self.output_dir)
 
 
-def get_callbacks(output_dir):
+def get_callbacks():
+    """Get the main callbacks for a Tensorflow model."""
+
     import tensorflow_addons as tfa
     from datetime import datetime
 
@@ -392,10 +390,17 @@ def get_callbacks(output_dir):
     ]
 
 
-def compile_model(model, optimizer_type, learning_rate, is_regression):
+def compile_model(model, is_regression: bool, *args, **kwargs):
+    """Compile a Tensorflow model.
+
+    Args:
+        model : The model architecture to compile.
+        is_regression : Whenever the prediction task is a classification one or a regression one.
+    """
+
     import tensorflow_addons as tfa
 
-    optimizer = get_optimizer(optimizer_type, learning_rate)
+    optimizer = get_optimizer(*args, **kwargs)
 
     if is_regression:
         loss_fn = tf.keras.losses.MeanSquaredError()
@@ -408,17 +413,24 @@ def compile_model(model, optimizer_type, learning_rate, is_regression):
 
 
 def load_transformers(
-    tokenizer_name,
-    config_name,
-    overwrite_output_dir,
-    output_dir,
-    num_labels,
+    tokenizer_name: str,
+    config_name: str,
+    overwrite_output_dir: bool,
+    output_dir: str,
+    num_labels: int,
     model_name_or_path,
     cache_dir,
     model_revision,
-    use_auth_token,
+    use_auth_token: bool,
     config_changes: dict = None,
 ):
+    """Load a transformer, a configuration and a tokenizer from 'transformers' library.
+
+    Args:
+        tokenizer_name : The name of the tokenizer from HuggingFace.
+        config_name : The name of the configuration from HuggingFace.
+    """
+
     from transformers import AutoConfig
     from transformers import AutoTokenizer
     from transformers import TFAutoModelForSequenceClassification
@@ -498,11 +510,26 @@ def load_transformers(
 
 
 def flatten(l):
+    """Flatten a list.
+
+    Args:
+        l : The list to flatten.
+
+    """
+
     return [item for sublist in l for item in sublist]
 
 
-def compute_position(sentence: str | list, target: int, tokenizer):
-    """Compute the first token of the targeted word in the sentence"""
+def compute_position(sentence: str | list, target: int, tokenizer) -> int:
+    """Compute the first token's position of the targeted word in a sentence.
+
+    Args:
+        sentence : The sentence.
+        target : The position of the targeted word in the sentence.
+        tokenizer : The tokenizer to compute tokens.
+
+    """
+
     if type(sentence) == str:
         sentence = sentence.split(" ")
     position = 0
@@ -537,6 +564,17 @@ def evaluate(model, train, val, test):
 
 
 def get_strategy(mixed_precision: bool = False, xla_accelerate: bool = False):
+    """Get the Tensorflow strategy.
+
+    Args:
+        mixed_precision : Mixed precision is enabled if True.
+        xla_accekerate : XLA acceleration is enabled if True.
+
+    Returns:
+        The distribute strategy if you are not using a TPU and the experimental distribute strategy if you are.
+
+    """
+
     try:
         tpu = tf.distribute.cluster_resolver.TPUClusterResolver()
     except ValueError:

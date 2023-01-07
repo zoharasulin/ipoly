@@ -9,7 +9,7 @@ if _ipython:
     _TRACEBACK_FUNCTION = _ipython.showtraceback
 
 
-def _hide_traceback(*args, **kwargs):
+def _ipython_hide_traceback(*args, **kwargs):
     global _SHOW_TRACEBACK, _TRACEBACK_FUNCTION
     if _SHOW_TRACEBACK:
         return _TRACEBACK_FUNCTION(*args, **kwargs)
@@ -24,7 +24,9 @@ def _hide_traceback(*args, **kwargs):
         )
 
 
-def exception_handler(exception_type, exception, traceback, debug_hook=sys.excepthook):
+def _python_exception_handler(
+    exception_type, exception, traceback, debug_hook=sys.excepthook
+):
     global _SHOW_TRACEBACK
     if _SHOW_TRACEBACK:
         debug_hook(exception_type, exception, traceback)
@@ -34,16 +36,25 @@ def exception_handler(exception_type, exception, traceback, debug_hook=sys.excep
 
 
 if _ipython:
-    _ipython.showtraceback = _hide_traceback
+    _ipython.showtraceback = _ipython_hide_traceback
 else:
-    sys.excepthook = exception_handler
+    sys.excepthook = _python_exception_handler
 
 
 def raiser(
     message: str,
-    exception_type: Type[BaseException] = Exception,
+    type: Type[BaseException] = Exception,
     traceback: bool = False,
 ):
+    """Raise an exception with or without the traceback.
+
+    Args:
+        message : The message of the exception.
+        type : The type of the exception raised.
+        traceback : The traceback is printed if False.
+
+    """
+
     global _SHOW_TRACEBACK
     _SHOW_TRACEBACK = traceback
-    raise exception_type(message)
+    raise type(message)
