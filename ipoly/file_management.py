@@ -61,10 +61,12 @@ def caster(df: pd.DataFrame):
 def load(
     file: str | Iterable[str],
     sheet: int = 1,
-    skiprows=None,
+    skiprows = None,
     on: str = "index",
-    classic_data=True,
-    recursive=True,
+    classic_data: bool = True,
+    recursive: bool = True,
+    has_title: bool = True,
+    has_index: bool = True
 ):
     """Load files or folders for most used file types.
 
@@ -168,9 +170,11 @@ def load(
                 firstline = myfile.readline()
                 delimiter = detect(firstline, default=";")
                 myfile.close()
+            print(delimiter)
             extract = pd.read_csv(file, delimiter=delimiter)
-
-            extract.dropna(how="all", inplace=True)
+            extract.dropna(how="all", inplace=True) # Drop empty rows
+            if not has_title:
+                extract = extract.T.reset_index().T.reset_index(drop=True)
             if len(
                 [
                     True
@@ -184,10 +188,10 @@ def load(
                 )
             if classic_data:
                 if on != "index":
-                    extract.dropna(subset=[on], inplace=True)
+                    extract.dropna(subset=[on], inplace=True) # Drop rows without label
                 extract = caster(extract)
-            extract.set_index(extract.columns[0])
-            extract.drop(extract.columns[0], axis=1, inplace=True)
+            if has_index:
+                extract = extract.set_index(extract.columns[0]) # Set first column as index
         case "parquet":
             extract = pq.read_pandas(file).to_pandas()
         case "png" | "jpg":

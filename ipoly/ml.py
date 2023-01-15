@@ -384,7 +384,7 @@ def get_callbacks():
     )
     return [
         tensorboard_callback,
-        tfa.callbacks.TQDMProgressBar(),
+        # tfa.callbacks.TQDMProgressBar(),
         tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=1),
         scheduler,
     ]
@@ -413,8 +413,6 @@ def compile_model(model, is_regression: bool, *args, **kwargs):
 
 
 def load_transformers(
-    tokenizer_name: str,
-    config_name: str,
     overwrite_output_dir: bool,
     output_dir: str,
     num_labels: int,
@@ -422,6 +420,8 @@ def load_transformers(
     cache_dir,
     model_revision,
     use_auth_token: bool,
+    tokenizer_name: str = None,
+    config_name: str = None,
     config_changes: dict = None,
 ):
     """Load a transformer, a configuration and a tokenizer from 'transformers' library.
@@ -541,14 +541,14 @@ def compute_position(sentence: str | list, target: int, tokenizer) -> int:
     return position + 2
 
 
-def train(model, train, val, epochs, batch_size, output_dir="tensorboard_results"):
+def train(model, train, val, epochs, batch_size):
     return model.fit(
         train[0],
         train[1],
         validation_data=val,
         epochs=epochs,
         batch_size=batch_size,
-        callbacks=get_callbacks(output_dir),
+        callbacks=get_callbacks(),
     )
 
 
