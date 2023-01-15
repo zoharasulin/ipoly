@@ -1,0 +1,10 @@
+-r requirements.txt
+black
+pytest
+ipykernel
+sphinx
+sphinx-rtd-theme
+myst_parser
+sphinx-autodoc-typehints
+sphinx-autodocgen
+furo

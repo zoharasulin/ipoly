@@ -12,3 +12,12 @@ openpyxl
 torch
 tensorflow
 nptyping
+colorama
+IPython
+plyer
+librosa
+webdriver-manager
+selenium
+beautifulsoup4
+tensorflow-addons
+transformers

@@ -7,40 +7,44 @@ from traceback import extract_stack, walk_stack
 import logging
 from typing import Literal
 
-available_log_levels = Literal["PROD", "NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+available_log_levels = Literal[
+    "PROD", "NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
+]
 
 
 class Logger:
-    """
-    Abstract class to implement a configurable logger to a specific class
+    """Abstract class to implement a configurable logger to a specific class
+
     The logger automatically creates a log file named like the class implementing this class
 
     :param debug: bool, default False
 
     :param log: str, default "PROD"
         Level of the logger among :
-                PROD: Deactivate the logger
-                NOTSET: Level 0
-                DEBUG: Level 10
-                INFO: Level 20
-                WARNING: Level 30
-                ERROR: Level 40
-                CRITICAL: Level 50
+        PROD: Deactivate the logger
+        NOTSET: Level 0
+        DEBUG: Level 10
+        INFO: Level 20
+        WARNING: Level 30
+        ERROR: Level 40
+        CRITICAL: Level 50
     :param log_stdout: bool, default False
         Print the logs if enabled, however in both cases save the logs in the log file
     :param keep_log: bool, default False
         Overwrite the previous log file if False
     """
+
     @abstractmethod
     def _raiser(self, exception: str):
         raise NotImplementedError
 
-    def __init__(self,
-                 debug=False,
-                 log: available_log_levels = "PROD",
-                 log_stdout=False,
-                 keep_log=False
-                 ):
+    def __init__(
+        self,
+        debug=False,
+        log: available_log_levels = "PROD",
+        log_stdout=False,
+        keep_log=False,
+    ):
         self._DEBUG = debug
         self._LOG = log
         self._log_stdout = log_stdout
@@ -87,7 +91,7 @@ class Logger:
                 1000000,
                 1,
                 encoding="utf-8",
-                )
+            )
             log_type = {
                 "NOTSET": logging.NOTSET,
                 "DEBUG": logging.DEBUG,
@@ -117,6 +121,7 @@ class Logger:
             Log level (PROD, NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL)
         :return: None
         """
+
         if condition and self._LOG != "PROD":
             logging_levels = {
                 "NOTSET": logging.NOTSET,
@@ -134,6 +139,7 @@ class Logger:
         Check if the log file has been created, else raise an error
         :return: None
         """
+
         while self._outer_frame.f_lineno == self.creation_line:
             sleep(0.01)
         # this is executed as soon as the line number changes
