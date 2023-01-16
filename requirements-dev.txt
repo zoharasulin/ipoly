@@ -7,4 +7,3 @@ sphinx-rtd-theme
 myst_parser
 sphinx-autodoc-typehints
 sphinx-autodocgen
-furo

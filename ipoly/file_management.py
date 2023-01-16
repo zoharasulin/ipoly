@@ -61,12 +61,12 @@ def caster(df: pd.DataFrame):
 def load(
     file: str | Iterable[str],
     sheet: int = 1,
-    skiprows = None,
+    skiprows=None,
     on: str = "index",
     classic_data: bool = True,
     recursive: bool = True,
     has_title: bool = True,
-    has_index: bool = True
+    has_index: bool = True,
 ):
     """Load files or folders for most used file types.
 
@@ -88,11 +88,11 @@ def load(
         file: The file or folder name.
             If it is a folder, all supported file types will be
             loaded in a list.
-        sheet:
-        skiprows:
+        sheet: The number of the sheet to be extracted from an excel file.
+        skiprows: The number of rows to be skipped while reading the file.
         on:
         classic_data:
-        recursive:
+        recursive: If True, the function will search for the file in subdirectories as well.
 
     """
 
@@ -172,7 +172,7 @@ def load(
                 myfile.close()
             print(delimiter)
             extract = pd.read_csv(file, delimiter=delimiter)
-            extract.dropna(how="all", inplace=True) # Drop empty rows
+            extract.dropna(how="all", inplace=True)  # Drop empty rows
             if not has_title:
                 extract = extract.T.reset_index().T.reset_index(drop=True)
             if len(
@@ -188,10 +188,12 @@ def load(
                 )
             if classic_data:
                 if on != "index":
-                    extract.dropna(subset=[on], inplace=True) # Drop rows without label
+                    extract.dropna(subset=[on], inplace=True)  # Drop rows without label
                 extract = caster(extract)
             if has_index:
-                extract = extract.set_index(extract.columns[0]) # Set first column as index
+                extract = extract.set_index(
+                    extract.columns[0]
+                )  # Set first column as index
         case "parquet":
             extract = pq.read_pandas(file).to_pandas()
         case "png" | "jpg":
