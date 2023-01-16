@@ -25,6 +25,7 @@ extensions = [
     "sphinx_autodoc_typehints",
     "sphinx.ext.autosummary",
     "sphinx.ext.githubpages",
+    "sphinx_search.extension",
 ]
 
 
@@ -39,7 +40,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "sphinx_rtd_theme"  # "furo"
-html_static_path = ["_build/html/_static"]
+html_static_path = []
 
 import pathlib
 
