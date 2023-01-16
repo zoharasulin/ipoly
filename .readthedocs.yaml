@@ -8,5 +8,6 @@ python:
   install:
     - method: pip
       path: .
+    - requirements: requirements-dev.txt
 formats:
   - pdf
