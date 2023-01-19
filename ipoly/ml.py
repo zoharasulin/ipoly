@@ -9,6 +9,7 @@ from nptyping import NDArray, Int
 import pandas as pd
 from ipoly.file_management import caster
 import tensorflow as tf
+from ipoly.traceback import raiser 
 
 
 def set_seed(seed: int = 42) -> None:
@@ -258,6 +259,23 @@ def interpolator(df: pd.DataFrame) -> pd.DataFrame:
     return caster(pd.DataFrame(array, columns=df.columns, index=df.index))
 
 
+def subfinder(mylist: list | pd.Index, pattern: list | pd.Index) -> list:
+    """Finds all elements of `mylist` that are present in `pattern`
+    
+    Args:
+        mylist : list or pd.Index, the list to search in.
+        pattern : list or pd.Index, the list of elements to search for.
+        
+    Returns:
+        A list of elements of `mylist` that are present in `pattern`
+        
+    """
+    
+    mylist = list(mylist)
+    pattern = list(pattern)
+    return list(filter(lambda x: x in pattern, mylist))
+
+
 def prepare_table(
     df: pd.DataFrame,
     y: str | list[str] = "",
@@ -277,6 +295,9 @@ def prepare_table(
     """
 
     y = [y] if not y is list else y
+    if len(y) != len(subfinder(y, df.columns)):
+        raiser("y variable is not in df columns", Exception)
+    
     category_columns = df.select_dtypes(include=["category", object]).columns
     # Drop rows with NaNs in tye y columns
     if y != [""]:
