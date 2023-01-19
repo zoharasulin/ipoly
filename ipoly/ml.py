@@ -9,7 +9,7 @@ from nptyping import NDArray, Int
 import pandas as pd
 from ipoly.file_management import caster
 import tensorflow as tf
-from ipoly.traceback import raiser 
+from ipoly.traceback import raiser
 
 
 def set_seed(seed: int = 42) -> None:
@@ -261,16 +261,16 @@ def interpolator(df: pd.DataFrame) -> pd.DataFrame:
 
 def subfinder(mylist: list | pd.Index, pattern: list | pd.Index) -> list:
     """Finds all elements of `mylist` that are present in `pattern`
-    
+
     Args:
         mylist : list or pd.Index, the list to search in.
         pattern : list or pd.Index, the list of elements to search for.
-        
+
     Returns:
         A list of elements of `mylist` that are present in `pattern`
-        
+
     """
-    
+
     mylist = list(mylist)
     pattern = list(pattern)
     return list(filter(lambda x: x in pattern, mylist))
@@ -297,7 +297,8 @@ def prepare_table(
     y = [y] if not y is list else y
     if len(y) != len(subfinder(y, df.columns)):
         raiser("y variable is not in df columns", Exception)
-    
+
+    df = caster(df)
     category_columns = df.select_dtypes(include=["category", object]).columns
     # Drop rows with NaNs in tye y columns
     if y != [""]:
@@ -616,3 +617,127 @@ def get_strategy(mixed_precision: bool = False, xla_accelerate: bool = False):
     if xla_accelerate:
         tf.config.optimizer.set_jit(True)
     return strategy
+
+
+def find_best_model(X: pd.DataFrame, y: pd.DataFrame, seed: int = 42):
+    """Finds the best machine learning model for the given dataset.
+
+    Args:
+        X : The input dataset.
+        y : The target dataset.
+        seed : The seed used for reproducibility, by default 42
+
+    Returns:
+        The best model, which can be an instance of a classifier.
+
+    """
+
+    from sklearn.ensemble import (
+        BaggingClassifier,
+        AdaBoostClassifier,
+        ExtraTreesClassifier,
+        RandomForestClassifier,
+    )
+    from sklearn.linear_model import (
+        RidgeClassifierCV,
+        RidgeClassifier,
+        SGDClassifier,
+        Perceptron,
+        PassiveAggressiveClassifier,
+        LogisticRegression,
+    )
+    from sklearn.neighbors import NearestCentroid, KNeighborsClassifier
+    from sklearn.calibration import CalibratedClassifierCV
+    from sklearn.dummy import DummyClassifier
+    from sklearn.discriminant_analysis import (
+        LinearDiscriminantAnalysis,
+        QuadraticDiscriminantAnalysis,
+    )
+    from sklearn.semi_supervised import LabelSpreading, LabelPropagation
+    from sklearn.tree import ExtraTreeClassifier, DecisionTreeClassifier
+    from sklearn.svm import NuSVC, LinearSVC, SVC
+    from sklearn.naive_bayes import BernoulliNB, GaussianNB
+    from xgboost import XGBClassifier
+    from lightgbm import LGBMClassifier
+    from lazypredict.Supervised import LazyClassifier
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import accuracy_score
+    from sklearn.model_selection import GridSearchCV
+
+    set_seed(seed)
+
+    # split the data into training and testing sets
+    X_train, X_test, Y_train, Y_test = train_test_split(
+        X, y, test_size=0.2, random_state=seed
+    )
+
+    # initialize the LazyClassifier
+    clf = LazyClassifier(verbose=0, ignore_warnings=True, custom_metric=None)
+
+    # fit the classifier with train data
+    models, predictions = clf.fit(X_train, X_test, Y_train, Y_test)
+
+    best_acc = 0
+    best_model = None
+
+    # initialize the models to be tested
+    models = {
+        "LGBMClassifier": LGBMClassifier(),
+        "XGBClassifier": XGBClassifier(),
+        "KNeighborsClassifier": KNeighborsClassifier(),
+        "SGDClassifier": SGDClassifier(),
+        "RidgeClassifierCV": RidgeClassifierCV(),
+        "RidgeClassifier": RidgeClassifier(),
+        "ExtraTreeClassifier": ExtraTreeClassifier(),
+        "LinearDiscriminantAnalysis": LinearDiscriminantAnalysis(),
+        "LabelSpreading": LabelSpreading(),
+        "AdaBoostClassifier": AdaBoostClassifier(),
+        "NuSVC": NuSVC(),
+        "DecisionTreeClassifier": DecisionTreeClassifier(),
+        "LinearSVC": LinearSVC(),
+        "ExtraTreesClassifier": ExtraTreesClassifier(),
+        "BernoulliNB": BernoulliNB(),
+        "BaggingClassifier": BaggingClassifier(),
+        "GaussianNB": GaussianNB(),
+        "LabelPropagation": LabelPropagation(),
+        "LogisticRegression": LogisticRegression(),
+        "RandomForestClassifier": RandomForestClassifier(),
+        "NearestCentroid": NearestCentroid(),
+        "Perceptron": Perceptron(),
+        "CalibratedClassifierCV": CalibratedClassifierCV(),
+        "SVC": SVC(),
+        "QuadraticDiscriminantAnalysis": QuadraticDiscriminantAnalysis(),
+        "DummyClassifier": DummyClassifier(),
+        "PassiveAggressiveClassifier": PassiveAggressiveClassifier(),
+    }
+
+    # sort the models by accuracy
+    predictions = {
+        k: v
+        for k, v in sorted(predictions.items(), key=lambda item: item, reverse=True)
+    }
+
+    # take the best 3 models
+    best_models = dict(list(predictions.items())[4][1][:3])
+
+    # iterate through the models and parameters
+    for model_name, _ in best_models.items():
+        model = models[model_name]
+        # define the parameters for each model
+        params = {key: [value] for key, value in model.get_params().items()}
+
+        optimizer = GridSearchCV(estimator=model, param_grid=params, cv=5)
+        optimizer.fit(X_train, Y_train)
+
+        # predict on the test set
+        Y_pred = optimizer.predict(X_test)
+
+        # calculate the accuracy
+        acc = accuracy_score(Y_test, Y_pred)
+
+        # update the best model if necessary
+        if acc > best_acc:
+            best_acc = acc
+            best_model = model
+    best_model = best_model.fit(X, y)
+    return best_model
