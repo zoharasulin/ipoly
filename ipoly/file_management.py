@@ -170,7 +170,6 @@ def load(
                 firstline = myfile.readline()
                 delimiter = detect(firstline, default=";")
                 myfile.close()
-            print(delimiter)
             extract = pd.read_csv(file, delimiter=delimiter)
             extract.dropna(how="all", inplace=True)  # Drop empty rows
             if not has_title:

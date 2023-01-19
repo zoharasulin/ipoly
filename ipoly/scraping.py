@@ -100,8 +100,6 @@ def _value_finder(driver, tag):
 
 
 def move(scrap_object, forward_moves, backward_moves):
-    from bs4 import BeautifulSoup
-
     if not all(isinstance(el, list) for el in forward_moves):
         forward_moves = [forward_moves]
     if not all(isinstance(el, list) for el in backward_moves):
@@ -187,7 +185,15 @@ def unknown_attributes_finder(args, kwargs, soup):
     return new_args, new_kwargs
 
 
-def find_all_text(*args, **kwargs):
+def _find_object(tag, object_type):
+    match object_type:
+        case "text":
+            return tag.text.strip()
+        case "href":
+            return tag["href"]
+
+
+def find_all_object(*args, object_type="text", **kwargs):
     from re import compile as re_compile
 
     def func(soup):
@@ -199,7 +205,9 @@ def find_all_text(*args, **kwargs):
             else {k: re_compile(v + r" *") for k, v in arg.items()}
             for arg in args
         ]
-        return [tag.text.strip() for tag in soup.find_all(*args, **kwargs)]
+        return [
+            _find_object(tag, object_type) for tag in soup.find_all(*args, **kwargs)
+        ]
 
     return func
 
