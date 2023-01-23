@@ -12,6 +12,7 @@ from collections import Counter
 import string
 import copy
 from typing import Optional, List
+from ipoly.traceback import raiser
 
 SILLY_DELIMITERS = frozenset(string.ascii_letters + string.digits + ".")
 
@@ -83,6 +84,7 @@ def load(
         - json
         - parquet
         - wav
+        - yaml
 
     Args:
         file: The file or folder name.
@@ -116,12 +118,11 @@ def load(
         pathname = directory + "/" + file
     files = glob.glob(pathname, recursive=recursive)
     if len(files) > 1:
-        print(
+        raiser(
             "There are multiple files with '"
             + file
             + "' name in the directory/subdirectories"
-        )  # TODO check multi extension
-        raise Exception
+        )
     elif len(files) == 0:
         print("Warning : The file '" + file + "' wasn't found !")
         return pd.DataFrame()
@@ -222,21 +223,25 @@ def load(
             from librosa import load as librosa_load
 
             return librosa_load(file, sr=None)
+        case "yaml":
+            import yaml
+
+            with open(file, "r") as stream:
+                return yaml.safe_load(stream)
         case None:  # Directory
             return [
                 load(elem, sheet, skiprows, on, classic_data, recursive)
                 for elem in glob.glob(file + "/*")
             ]
         case default:
-            print(
-                f"I don't handle this file format yet ({default}), came back in a decade."
+            raiser(
+                f"I don't handle this file format yet ({default}), came back in a decade.",
             )
-            raise Exception
     if classic_data:
         if on == "index":
             extract = extract[~extract.index.duplicated(keep="first")]
         elif (not (on in extract)) and (on != None):
-            print(
+            raiser(
                 "There is no column name '"
                 + on
                 + "' in the sheet "
@@ -245,7 +250,6 @@ def load(
                 + file
                 + "' so I can't load this file? Try to change the 'on' parameter"
             )
-            raise Exception
         else:
             extract.drop_duplicates(subset=on, keep="last", inplace=True)
         extract.replace("Null", np.nan, inplace=True)
@@ -266,6 +270,8 @@ def save(
         - json
         - xlsx
         - png
+        - yaml
+        - csv
 
     Args:
         file: The file name.
@@ -283,11 +289,10 @@ def save(
             try:
                 writer = pd.ExcelWriter(file)
             except PermissionError:
-                print(
+                raiser(
                     "I can't access the file '" + file + "', the "
                     "solution may be to close it and retry."
                 )
-                raise Exception
             try:
                 object_to_save.to_excel(writer, sheet_name=sheet, index=keep_index)
             except IOError:
@@ -313,11 +318,15 @@ def save(
         case "json":
             with open(file, "w") as outfile:
                 outfile.write(object_to_save)
+        case "yaml":
+            import yaml
+
+            with open(file, "w") as f:
+                yaml.dump(object_to_save, f)
         case default:
-            print(
-                f"I don't handle this file format yet ({default}), came back in a decade."
+            raiser(
+                f"I don't handle this file format yet ({default}), come back in a decade.",
             )
-            raise Exception
 
 
 def merge(
@@ -330,8 +339,7 @@ def merge(
     save_file: bool = False,
 ):
     if not (type(df) is pd.DataFrame):
-        print("The df parameter must be a DataFrame.")
-        raise Exception
+        raiser("The df parameter must be a DataFrame.")
     if type(file) is pd.DataFrame:
         dataBase = file
     else:
@@ -347,12 +355,11 @@ def merge(
             try:
                 columns.remove(on)
             except ValueError:
-                print(
+                raiser(
                     "You can't merge your data as there are no column '"
                     + on
-                    + "' in your already loaded DataFrame."
+                    + "' in your already loaded DataFrame.",
                 )
-                raise Exception
         if df.empty:
             merge = dataBase.copy()
         elif on != "index":

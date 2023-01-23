@@ -152,7 +152,7 @@ def croper(image: np.array, margin: int = 18) -> np.array:
     """
 
     if len(np.unique(image)) == 1:
-        raise Exception("The image is composed of a single color.")
+        raiser("The image is composed of a single color.")
     if len(image.shape) == 3:
         image_sum = image.sum(axis=2) % 765
     else:

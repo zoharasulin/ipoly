@@ -7,6 +7,7 @@ from typing import Union
 import imaplib
 from plyer import notification
 import os
+from ipoly.traceback import raiser
 
 
 def send(
@@ -148,7 +149,7 @@ def say(message: str) -> None:
         + "0123456789,;:.?!-_ÂÃÄÀÁÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ"
         for char in message
     ):
-        raise Exception(
+        raiser(
             "This message will not be said because you used some symbols that may be used for doing some malicious injection :("
         )
     from platform import system as ps

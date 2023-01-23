@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 from ipoly.file_management import load, save
+from ipoly.traceback import raiser
 
 
 class Component(ABC):
@@ -162,7 +163,7 @@ def unknown_attributes_finder(args, kwargs, soup):
     for kwarg in kwargs.items():
         if type(kwarg[1]) == int:
             if unknown_attr:
-                raise Exception("You can't look for multiple unknown attributes.")
+                raiser("You can't look for multiple unknown attributes.")
             if kwarg[0] == "class_":
                 unknown_attr = ("class", kwarg[1])
             else:
