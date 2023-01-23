@@ -390,23 +390,51 @@ class SavePretrainedCallback(tf.keras.callbacks.Callback):
         self.model.save_pretrained(self.output_dir)
 
 
-def get_callbacks():
+def get_lr_callback(strategy):
+    LR_START = 0.00001
+    LR_MAX = 0.00005 * strategy.num_replicas_in_sync
+    LR_MIN = 0.00001
+    LR_RAMPUP_EPOCHS = 5
+    LR_SUSTAIN_EPOCHS = 0
+    LR_EXP_DECAY = 0.8
+
+    def lrfn(epoch):
+        if epoch < LR_RAMPUP_EPOCHS:
+            lr = (LR_MAX - LR_START) / LR_RAMPUP_EPOCHS * epoch + LR_START
+        elif epoch < LR_RAMPUP_EPOCHS + LR_SUSTAIN_EPOCHS:
+            lr = LR_MAX
+        else:
+            lr = (LR_MAX - LR_MIN) * LR_EXP_DECAY ** (
+                epoch - LR_RAMPUP_EPOCHS - LR_SUSTAIN_EPOCHS
+            ) + LR_MIN
+        return lr
+
+    return tf.keras.callbacks.LearningRateScheduler(lrfn, verbose=0)
+
+
+def get_callbacks(strategy, model_name):
     """Get the main callbacks for a Tensorflow model."""
 
-    import tensorflow_addons as tfa
     from datetime import datetime
+    from os import makedirs
 
-    def scheduler(_, lr):
-        return lr * tf.math.exp(-0.1)
-
-    scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
+    scheduler = get_lr_callback(strategy)
     logdir = "logs/image/" + datetime.now().strftime("%Y%m%d-%H%M%S")
     tensorboard_callback = tf.keras.callbacks.TensorBoard(
         log_dir=logdir, histogram_freq=1
     )
+    makedirs("checkpoints", exist_ok=True)
+    chk_callback = tf.keras.callbacks.ModelCheckpoint(
+        f"checkpoints/{model_name}_best.h5",
+        save_weights_only=True,
+        monitor="val_f1_score",
+        mode="max",
+        save_best_only=True,
+        verbose=1,
+    )
     return [
+        chk_callback,
         tensorboard_callback,
-        # tfa.callbacks.TQDMProgressBar(),
         tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=1),
         scheduler,
     ]
@@ -563,14 +591,14 @@ def compute_position(sentence: str | list, target: int, tokenizer) -> int:
     return position + 2
 
 
-def train(model, train, val, epochs, batch_size):
+def train(model, strategy, model_name, train, val, epochs, batch_size):
     return model.fit(
         train[0],
         train[1],
         validation_data=val,
         epochs=epochs,
         batch_size=batch_size,
-        callbacks=get_callbacks(),
+        callbacks=get_callbacks(strategy, model_name),
     )
 
 
