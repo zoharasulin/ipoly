@@ -1,5 +1,4 @@
 from pytest import raises
-from sys import path
 
 from ipoly import *
 
