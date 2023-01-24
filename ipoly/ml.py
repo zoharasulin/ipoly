@@ -1,14 +1,21 @@
+"""Provide routines for Machine Learning."""
 import random
-import numpy as np
-import seaborn as sns
+from typing import Any
+from typing import Iterable
+from typing import Literal
+from typing import Tuple
+
 import matplotlib.pyplot as plt
-from pandas import DataFrame
-from typing import Iterable, Any, Tuple, Literal
-from sklearn import metrics
-from nptyping import NDArray, Int
+import numpy as np
 import pandas as pd
-from ipoly.file_management import caster
+import seaborn as sns
 import tensorflow as tf
+from nptyping import Int
+from nptyping import NDArray
+from pandas import DataFrame
+from sklearn import metrics
+
+from ipoly.file_management import caster
 from ipoly.traceback import raiser
 
 
@@ -17,9 +24,7 @@ def set_seed(seed: int = 42) -> None:
 
     Args:
         seed: The seed value to set.
-
     """
-
     from tensorflow import random as tfr
     from torch.backends import cudnn
     from torch.cuda import manual_seed as cuda_manual_seed
@@ -43,9 +48,7 @@ def plot_history(history, keys: list[str] = None) -> None:
         history: The history to plot.
         keys: List of all metrics that will be plot.Plot all metrics
             if not specified.
-
     """
-
     if keys is None:
         keys = history.history.keys()
     for key in keys:
@@ -60,9 +63,7 @@ def plot_correlation_matrix(df: DataFrame) -> None:
 
     Args:
         df: The input DataFrame.
-
     """
-
     corr = df.corr()
     # Generate a mask for the upper triangle
     mask = np.triu(np.ones_like(corr, dtype=bool))
@@ -84,7 +85,6 @@ def plot_correlation_matrix(df: DataFrame) -> None:
 
 
 def _confusion_matrix(confusion_matrix, axes, class_names, fontsize=14):
-
     df_cm = DataFrame(
         confusion_matrix,
         index=class_names,
@@ -96,17 +96,25 @@ def _confusion_matrix(confusion_matrix, axes, class_names, fontsize=14):
     except ValueError:
         raise ValueError("Confusion matrix values must be integers.")
     heatmap.yaxis.set_ticklabels(
-        heatmap.yaxis.get_ticklabels(), rotation=0, ha="right", fontsize=fontsize
+        heatmap.yaxis.get_ticklabels(),
+        rotation=0,
+        ha="right",
+        fontsize=fontsize,
     )
     heatmap.xaxis.set_ticklabels(
-        heatmap.xaxis.get_ticklabels(), rotation=45, ha="right", fontsize=fontsize
+        heatmap.xaxis.get_ticklabels(),
+        rotation=45,
+        ha="right",
+        fontsize=fontsize,
     )
     axes.set_ylabel("True label")
     axes.set_xlabel("Predicted label")
 
 
 def plot_confusion_matrix(
-    y_pred: NDArray[Any, Int], y_true: NDArray[Any, Int], labels: Iterable[str] = None
+    y_pred: NDArray[Any, Int],
+    y_true: NDArray[Any, Int],
+    labels: Iterable[str] = None,
 ):
     """Plot the confusion matrix.
 
@@ -118,16 +126,16 @@ def plot_confusion_matrix(
         y_true: True labels.
         labels: Labels name. Need to be specified only if it is a
             multilabel classification.
-
     """
-
     fig, ax = plt.subplots(2, 2, figsize=(10, 7))
     if ((np.unique(y_true.sum(axis=1)) == 1).all()) or (len(y_true.shape) == 1):
         if len(y_true.shape) == 2:
             y_true = y_true.argmax(axis=1)
             y_pred = y_pred.argmax(axis=1)
         _confusion_matrix(
-            metrics.confusion_matrix(y_true, y_pred), ax.flatten(), ["N", "Y"]
+            metrics.confusion_matrix(y_true, y_pred),
+            ax.flatten(),
+            ["N", "Y"],
         )
     else:
         confusion_matrix = metrics.multilabel_confusion_matrix(y_true, y_pred)
@@ -148,9 +156,7 @@ def croper(image: np.array, margin: int = 18) -> np.array:
 
     Returns:
         The cropped image.
-
     """
-
     if len(np.unique(image)) == 1:
         raiser("The image is composed of a single color.")
     if len(image.shape) == 3:
@@ -176,9 +182,7 @@ def get_weighted_loss(pos_weights, neg_weights, epsilon=1e-7):
 
     Returns:
         The loss classic function for the lost function.
-
     """
-
     from keras import backend as K
     from tensorflow import cast, float32
 
@@ -193,7 +197,7 @@ def get_weighted_loss(pos_weights, neg_weights, epsilon=1e-7):
                 -(
                     (pos_weights * y_true * K.log(y_pred + epsilon))
                     + (neg_weights * (1 - y_true) * K.log(1 - y_pred + epsilon))
-                )
+                ),
             )  # complete this line
         return loss
 
@@ -209,6 +213,7 @@ def plot(
     xticks: Tuple[int] = None,
     yticks: Tuple[int] = None,
 ):
+    """Set the main parameters value."""
     fig = plt.figure(figsize=figsize, dpi=100)
     fig.patch.set_facecolor("xkcd:white")
     plt.xticks(rotation=45, ha="right")
@@ -233,6 +238,7 @@ def plot(
 
 
 def path(path: str) -> str:
+    r"""Replace \ and / of a path according to the user platform."""
     from platform import system as ps
 
     if ps() == "Windows":
@@ -241,6 +247,11 @@ def path(path: str) -> str:
 
 
 def interpolator(df: pd.DataFrame) -> pd.DataFrame:
+    """Interpolate the missing values.
+
+    It does use NearestNDInterpolator from scipy to do the
+    interpolation.
+    """
     from scipy.interpolate import NearestNDInterpolator
 
     array = np.array(df)
@@ -249,7 +260,9 @@ def interpolator(df: pd.DataFrame) -> pd.DataFrame:
         idxs = list(range(array.shape[1]))
         idxs.pop(i)
         my_interpolator = NearestNDInterpolator(
-            filled_array[:, idxs], filled_array[:, i], rescale=True
+            filled_array[:, idxs],
+            filled_array[:, i],
+            rescale=True,
         )
         array[:, i] = np.apply_along_axis(
             lambda row: my_interpolator(*row[idxs]) if np.isnan(row[i]) else row[i],
@@ -260,7 +273,7 @@ def interpolator(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def subfinder(mylist: list | pd.Index, pattern: list | pd.Index) -> list:
-    """Finds all elements of `mylist` that are present in `pattern`
+    """Finds all elements of `mylist` that are present in `pattern`.
 
     Args:
         mylist : list or pd.Index, the list to search in.
@@ -268,9 +281,7 @@ def subfinder(mylist: list | pd.Index, pattern: list | pd.Index) -> list:
 
     Returns:
         A list of elements of `mylist` that are present in `pattern`
-
     """
-
     mylist = list(mylist)
     pattern = list(pattern)
     return list(filter(lambda x: x in pattern, mylist))
@@ -289,18 +300,22 @@ def prepare_table(
     """Prepare the table to feed a ML model.
 
     Args:
-        df : The DaaFrame to prepare for Machine Learning.
+        df : The DataFrame to prepare for Machine Learning.
         y : Column(s) name(s) of target variable(s).
-
+        correlation_threshold : The column is removed if its correlation with another is higher than this threshold.
+        missing_rows_threshold : The row is removed if the proportion of its non-empty cells is lower than this threshold.
+        missing_columns_threshold : The column is removed if its proportion of non-empty cells is lower than this threshold.
+        categories_ratio_threshold : The column is removed if its proportion of non unique values is higher than this threshold.
+        id_correlation_threshold : The column is removed if all its values are unique the mean correlation with other columns is less than this threshold.
+        verbose : Print realised actions if True.
     """
-
     y = [y] if not y is list else y
     if len(y) != len(subfinder(y, df.columns)):
         raiser("y variable is not in df columns", Exception)
 
     df = caster(df)
     category_columns = df.select_dtypes(include=["category", object]).columns
-    # Drop rows with NaNs in tye y columns
+    # Drop rows with NaNs in the y columns
     if y != [""]:
         for col in y:
             df = df[df[col].notna()]
@@ -356,6 +371,7 @@ def get_optimizer(
     type: Literal["Adam", "SGD", "RMSprop", "Adadelta", "Adamax", "Nadam", "Ftrl"],
     learning_rate,
 ):
+    """Returns the selected Tensorflow's optimizer."""
     from tensorflow import keras
 
     match type:
@@ -378,19 +394,8 @@ def get_optimizer(
     return optimizer
 
 
-class SavePretrainedCallback(tf.keras.callbacks.Callback):
-    # Hugging Face models have a save_pretrained() method that saves both the weights and the necessary
-    # metadata to allow them to be loaded as a pretrained model in future. This is a simple Keras callback
-    # that saves the model with this method after each epoch.
-    def __init__(self, output_dir):
-        super().__init__()
-        self.output_dir = output_dir
-
-    def on_epoch_end(self, _epoch, _logs=None):
-        self.model.save_pretrained(self.output_dir)
-
-
 def get_lr_callback(strategy):
+    """Return a learning rate callback."""
     LR_START = 0.00001
     LR_MAX = 0.00005 * strategy.num_replicas_in_sync
     LR_MIN = 0.00001
@@ -414,14 +419,14 @@ def get_lr_callback(strategy):
 
 def get_callbacks(strategy, model_name):
     """Get the main callbacks for a Tensorflow model."""
-
     from datetime import datetime
     from os import makedirs
 
     scheduler = get_lr_callback(strategy)
     logdir = "logs/image/" + datetime.now().strftime("%Y%m%d-%H%M%S")
     tensorboard_callback = tf.keras.callbacks.TensorBoard(
-        log_dir=logdir, histogram_freq=1
+        log_dir=logdir,
+        histogram_freq=1,
     )
     makedirs("checkpoints", exist_ok=True)
     chk_callback = tf.keras.callbacks.ModelCheckpoint(
@@ -447,7 +452,6 @@ def compile_model(model, is_regression: bool, *args, **kwargs):
         model : The model architecture to compile.
         is_regression : Whenever the prediction task is a classification one or a regression one.
     """
-
     import tensorflow_addons as tfa
 
     optimizer = get_optimizer(*args, **kwargs)
@@ -474,13 +478,20 @@ def load_transformers(
     config_name: str = None,
     config_changes: dict = None,
 ):
-    """Load a transformer, a configuration and a tokenizer from 'transformers' library.
+    """Load a model and a tokenizer from the 'transformers' library.
 
     Args:
+        overwrite_output_dir : Overwrite the previous training.
+        output_dir : Directory to save the training.
+        num_labels : The number of predicted labels.
+        model_name_or_path : Name or path of the transformer model.
+        cache_dir : The directory for caching the operations.
+        model_revision : The revision of the transformer model.
+        use_auth_token : Whether to use an authentication token or not.
         tokenizer_name : The name of the tokenizer from HuggingFace.
         config_name : The name of the configuration from HuggingFace.
+        config_changes : Config cahnges with a different value than the default value of the configuration.
     """
-
     from transformers import AutoConfig
     from transformers import AutoTokenizer
     from transformers import TFAutoModelForSequenceClassification
@@ -502,7 +513,7 @@ def load_transformers(
         else:
             raise ValueError(
                 f"Output directory ({output_dir}) already exists and is not empty. "
-                "Use --overwrite_output_dir to continue regardless."
+                "Use --overwrite_output_dir to continue regardless.",
             )
 
     if checkpoint is not None:
@@ -564,9 +575,7 @@ def flatten(l):
 
     Args:
         l : The list to flatten.
-
     """
-
     return [item for sublist in l for item in sublist]
 
 
@@ -577,9 +586,7 @@ def compute_position(sentence: str | list, target: int, tokenizer) -> int:
         sentence : The sentence.
         target : The position of the targeted word in the sentence.
         tokenizer : The tokenizer to compute tokens.
-
     """
-
     if type(sentence) == str:
         sentence = sentence.split(" ")
     position = 0
@@ -592,6 +599,7 @@ def compute_position(sentence: str | list, target: int, tokenizer) -> int:
 
 
 def train(model, strategy, model_name, train, val, epochs, batch_size):
+    """Fit a tensorflow model."""
     return model.fit(
         train[0],
         train[1],
@@ -603,6 +611,7 @@ def train(model, strategy, model_name, train, val, epochs, batch_size):
 
 
 def evaluate(model, train, val, test):
+    """Evaluate a model for all datasets."""
     train_loss, train_metrics = model.evaluate(train[0], train[1])
     val_loss, val_metrics = model.evaluate(val[0], val[1])
     test_loss, test_metrics = model.evaluate(test[0], test[1])
@@ -622,9 +631,7 @@ def get_strategy(mixed_precision: bool = False, xla_accelerate: bool = False):
 
     Returns:
         The distribute strategy if you are not using a TPU and the experimental distribute strategy if you are.
-
     """
-
     try:
         tpu = tf.distribute.cluster_resolver.TPUClusterResolver()
     except ValueError:
@@ -657,9 +664,7 @@ def find_best_model(X: pd.DataFrame, y: pd.DataFrame, seed: int = 42):
 
     Returns:
         The best model, which can be an instance of a classifier.
-
     """
-
     from sklearn.ensemble import (
         BaggingClassifier,
         AdaBoostClassifier,
@@ -696,7 +701,10 @@ def find_best_model(X: pd.DataFrame, y: pd.DataFrame, seed: int = 42):
 
     # split the data into training and testing sets
     X_train, X_test, Y_train, Y_test = train_test_split(
-        X, y, test_size=0.2, random_state=seed
+        X,
+        y,
+        test_size=0.2,
+        random_state=seed,
     )
 
     # initialize the LazyClassifier
