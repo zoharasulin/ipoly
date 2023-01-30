@@ -288,7 +288,8 @@ def subfinder(mylist: list | pd.Index, pattern: list | pd.Index) -> list:
 
 
 def prepare_table(
-    df: pd.DataFrame,
+    train_df: pd.DataFrame,
+    test_df: pd.DataFrame = None,
     y: str | list[str] = "",
     correlation_threshold: float = 0.9,
     missing_rows_threshold: float = 0.9,
@@ -296,11 +297,16 @@ def prepare_table(
     categories_ratio_threshold: float = 0.1,
     id_correlation_threshold: float = 0.04,
     verbose: bool = False,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+) -> Tuple[pd.DataFrame, pd.DataFrame] | Tuple[
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+]:
     """Prepare the table to feed a ML model.
 
     Args:
-        df : The DataFrame to prepare for Machine Learning.
+        train_df : The training DataFrame to prepare for Machine Learning.
+        test_df : The test DataFrame to prepare for Machine Learning. It is prepared the same way train_df is.
         y : Column(s) name(s) of target variable(s).
         correlation_threshold : The column is removed if its correlation with another is higher than this threshold.
         missing_rows_threshold : The row is removed if the proportion of its non-empty cells is lower than this threshold.
@@ -310,61 +316,89 @@ def prepare_table(
         verbose : Print realised actions if True.
     """
     y = [y] if not y is list else y
-    if len(y) != len(subfinder(y, df.columns)):
+    if len(y) != len(subfinder(y, train_df.columns)):
         raiser("y variable is not in df columns", Exception)
 
-    df = caster(df)
-    category_columns = df.select_dtypes(include=["category", object]).columns
+    train_df = caster(train_df)
+    if test_df is not None:
+        test_df = caster(
+            test_df,
+        )  # TODO Modify caster to be able to process multiple dfs at once.
+    category_columns = train_df.select_dtypes(include=["category", object]).columns
     # Drop rows with NaNs in the y columns
     if y != [""]:
         for col in y:
-            df = df[df[col].notna()]
+            train_df = train_df[train_df[col].notna()]
     # Drop the categorical columns with too much categories
-    df = df.drop(
-        [
-            col
-            for col in category_columns
-            if df[col].nunique() / len(df) > categories_ratio_threshold
-        ],
+    droped_category_columns = [
+        col
+        for col in category_columns
+        if train_df[col].nunique() / len(train_df) > categories_ratio_threshold
+    ]
+    train_df = train_df.drop(
+        droped_category_columns,
         axis=1,
     )
+    if test_df is not None:
+        test_df = test_df.drop(
+            droped_category_columns,
+            axis=1,
+        )
     # Convert categorical data to numerical ones
-    df = pd.get_dummies(df)
+    train_df = pd.get_dummies(train_df)
+    if test_df is not None:
+        test_df = pd.get_dummies(test_df)
     # Drop columns with not enough data
-    df = df.loc[
+    empty_columns = train_df.apply(
+        lambda col: (1 - col.count() / len(train_df.index)) < missing_columns_threshold,
+        axis=0,
+    )
+    empty_columns = empty_columns[empty_columns].index
+    train_df = train_df.loc[
         :,
-        df.apply(
-            lambda col: (1 - col.count() / len(df.index)) < missing_columns_threshold,
-            axis=0,
-        ),
+        empty_columns,
     ]
+    if test_df is not None:
+        test_df = test_df.loc[
+            :,
+            [x for x in empty_columns if x not in y],
+        ]
     # Drop rows with not enough data
-    df = df[
-        df.apply(
-            lambda row: (1 - row.count() / len(df.columns)) < missing_rows_threshold,
+    train_df = train_df[
+        train_df.apply(
+            lambda row: (1 - row.count() / len(train_df.columns))
+            < missing_rows_threshold,
             axis=1,
         )
     ]
     correlate_couples = []
-    corr = df.corr().abs()
+    corr = train_df.corr().abs()
     for col in corr:
         for index, val in corr[col].items():
             if val > correlation_threshold and (index != col):
                 if (index, col) not in correlate_couples:
                     correlate_couples.append((col, index))
-        if (df[col].nunique() == df.shape[0]) and (
+        if (train_df[col].nunique() == train_df.shape[0]) and (
             (corr[col].sum() - 1) / corr.shape[0] < id_correlation_threshold
-        ):  # TODO améliorer
+        ):  # TODO improve
             # Drop ids columns (unique values with low correlations with other columns)
             if not col in y:
-                df = df.drop(col, axis=1)
+                train_df = train_df.drop(col, axis=1)
+                if test_df is not None:
+                    test_df = test_df.drop(col, axis=1)
     for couple in correlate_couples:
         # Drop a column if highly correlated with another one
         if not any(elem in couple for elem in y):
-            df = df.drop(couple[0], axis=1)
-    if verbose:
-        print("")
-    return interpolator(df.drop(y, axis=1)), df[y]
+            train_df = train_df.drop(couple[0], axis=1)
+            if test_df is not None:
+                test_df = test_df.drop(couple[0], axis=1)
+    if test_df is not None:
+        return (
+            interpolator(train_df.drop(y, axis=1)),
+            train_df[y],
+            interpolator(test_df),
+        )
+    return interpolator(train_df.drop(y, axis=1)), train_df[y]
 
 
 def get_optimizer(
@@ -399,8 +433,8 @@ def get_lr_callback(strategy):
     LR_START = 0.00001
     LR_MAX = 0.00005 * strategy.num_replicas_in_sync
     LR_MIN = 0.00001
-    LR_RAMPUP_EPOCHS = 5
-    LR_SUSTAIN_EPOCHS = 0
+    LR_RAMPUP_EPOCHS = 4
+    LR_SUSTAIN_EPOCHS = 4
     LR_EXP_DECAY = 0.8
 
     def lrfn(epoch):
