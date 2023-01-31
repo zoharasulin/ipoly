@@ -76,6 +76,33 @@ def caster(df: pd.DataFrame):
     return df
 
 
+def locate_files(file: str, recursive: bool = True) -> Tuple[List[str], str]:
+    """Returns a list of file paths matching the given pattern of file name(s).
+
+    Args:
+        file: The name (or pattern) of the file to be located.
+        recursive: Whether to search recursively through subdirectories.
+
+    Returns:
+        list: A list of file paths matching the given file name and directory.
+    """
+    split_path = file.split("/")
+    if len(split_path) == 1:
+        directory = "./"
+    else:
+        file = split_path[-1]
+        directory = "/".join(split_path[:-1])
+    del split_path
+    file_format = file.split(".")[-1]
+    if len(file_format) + 1 >= len(file):
+        file_format = None
+    if recursive:
+        pathname = "**/" + directory + "/**/" + file
+    else:
+        pathname = directory + "/" + file
+    return glob.glob(pathname, recursive=recursive), file_format
+
+
 def load(
     file: str | Iterable[str],
     sheet: int = 1,
@@ -122,21 +149,7 @@ def load(
         return [
             load(elem, sheet, skiprows, on, classic_data, recursive) for elem in file
         ]
-    split_path = file.split("/")
-    if len(split_path) == 1:
-        directory = "./"
-    else:
-        file = split_path[-1]
-        directory = "/".join(split_path[:-1])
-    del split_path
-    file_format = file.split(".")[-1]
-    if len(file_format) + 1 >= len(file):
-        file_format = None
-    if recursive:
-        pathname = "**/" + directory + "/**/" + file
-    else:
-        pathname = directory + "/" + file
-    files = glob.glob(pathname, recursive=recursive)
+    files, file_format = locate_files(file, recursive)
     if len(files) > 1 and (file_format != "tfrec"):
         raiser(
             "There are multiple files with '"

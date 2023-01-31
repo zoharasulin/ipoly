@@ -1,19 +1,11 @@
 """Provide routines for Machine Learning."""
 import random
-from typing import Any
-from typing import Iterable
 from typing import Literal
 from typing import Tuple
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 import tensorflow as tf
-from nptyping import Int
-from nptyping import NDArray
-from pandas import DataFrame
-from sklearn import metrics
 
 from ipoly.file_management import caster
 from ipoly.traceback import raiser
@@ -39,112 +31,6 @@ def set_seed(seed: int = 42) -> None:
     manual_seed(seed)
     cudnn.deterministic = True
     cudnn.benchmark = False
-
-
-def plot_history(history, keys: list[str] = None) -> None:
-    """Plot the history of a Tensorflow training for each metrics.
-
-    Args:
-        history: The history to plot.
-        keys: List of all metrics that will be plot.Plot all metrics
-            if not specified.
-    """
-    if keys is None:
-        keys = history.history.keys()
-    for key in keys:
-        plt.plot(history.history[key])
-        plt.plot(history.history["val_accuracy"])
-        plt.legend(["train", "val"], loc="upper left")
-        plot("model accuracy", "epoch", "accuracy")
-
-
-def plot_correlation_matrix(df: DataFrame) -> None:
-    """Plot the correlation matrix of your DataFrame.
-
-    Args:
-        df: The input DataFrame.
-    """
-    corr = df.corr()
-    # Generate a mask for the upper triangle
-    mask = np.triu(np.ones_like(corr, dtype=bool))
-    # Set up the matplotlib figure
-    f, ax = plt.subplots(figsize=(11, 9))
-    # Generate a custom diverging colormap
-    cmap = sns.diverging_palette(230, 20, as_cmap=True)
-    # Draw the heatmap with the mask and correct aspect ratio
-    sns.heatmap(
-        corr,
-        mask=mask,
-        cmap=cmap,
-        vmax=0.3,
-        center=0,
-        square=True,
-        linewidths=0.5,
-        cbar_kws={"shrink": 0.5},
-    )
-
-
-def _confusion_matrix(confusion_matrix, axes, class_names, fontsize=14):
-    df_cm = DataFrame(
-        confusion_matrix,
-        index=class_names,
-        columns=class_names,
-    )
-
-    try:
-        heatmap = sns.heatmap(df_cm, annot=True, fmt="d", cbar=False, ax=axes)
-    except ValueError:
-        raise ValueError("Confusion matrix values must be integers.")
-    heatmap.yaxis.set_ticklabels(
-        heatmap.yaxis.get_ticklabels(),
-        rotation=0,
-        ha="right",
-        fontsize=fontsize,
-    )
-    heatmap.xaxis.set_ticklabels(
-        heatmap.xaxis.get_ticklabels(),
-        rotation=45,
-        ha="right",
-        fontsize=fontsize,
-    )
-    axes.set_ylabel("True label")
-    axes.set_xlabel("Predicted label")
-
-
-def plot_confusion_matrix(
-    y_pred: NDArray[Any, Int],
-    y_true: NDArray[Any, Int],
-    labels: Iterable[str] = None,
-):
-    """Plot the confusion matrix.
-
-    It determines by itself if it has to plot a simple confusion matrix
-    or multiple  ones in case of multilabel classification.
-
-    Args:
-        y_pred: Predicted logits.
-        y_true: True labels.
-        labels: Labels name. Need to be specified only if it is a
-            multilabel classification.
-    """
-    fig, ax = plt.subplots(2, 2, figsize=(10, 7))
-    if ((np.unique(y_true.sum(axis=1)) == 1).all()) or (len(y_true.shape) == 1):
-        if len(y_true.shape) == 2:
-            y_true = y_true.argmax(axis=1)
-            y_pred = y_pred.argmax(axis=1)
-        _confusion_matrix(
-            metrics.confusion_matrix(y_true, y_pred),
-            ax.flatten(),
-            ["N", "Y"],
-        )
-    else:
-        confusion_matrix = metrics.multilabel_confusion_matrix(y_true, y_pred)
-        for axes, cfs_matrix, label in zip(ax.flatten(), confusion_matrix, labels):
-            _confusion_matrix(cfs_matrix, axes, ["N", "Y"])
-            axes.set_title("Confusion Matrix for the class - " + label)
-
-        fig.tight_layout()
-        plt.show()
 
 
 def croper(image: np.array, margin: int = 18) -> np.array:
@@ -202,39 +88,6 @@ def get_weighted_loss(pos_weights, neg_weights, epsilon=1e-7):
         return loss
 
     return weighted_loss
-
-
-def plot(
-    title: str = None,
-    xlabel: str = None,
-    ylabel: str = None,
-    figsize: Any = None,
-    grid: bool = False,
-    xticks: Tuple[int] = None,
-    yticks: Tuple[int] = None,
-):
-    """Set the main parameters value."""
-    fig = plt.figure(figsize=figsize, dpi=100)
-    fig.patch.set_facecolor("xkcd:white")
-    plt.xticks(rotation=45, ha="right")
-
-    plt.legend(bbox_to_anchor=(1.05, 1))
-    if xticks:
-        plt.yticks(np.arange(*xticks))
-    if yticks:
-        plt.yticks(np.arange(*yticks))
-    plt.grid(grid)
-    if ylabel:
-        plt.ylabel(ylabel)
-    if xlabel:
-        plt.xlabel(xlabel)
-    if title:
-        plt.title(title)
-    if ".png" in title:
-        plt.savefig(title)
-    else:
-        plt.show()
-    plt.close()
 
 
 def path(path: str) -> str:
@@ -811,3 +664,92 @@ def find_best_model(X: pd.DataFrame, y: pd.DataFrame, seed: int = 42):
             best_model = model
     best_model = best_model.fit(X, y)
     return best_model
+
+
+def binary_focal_loss(gamma=2.0, alpha=0.25):
+    """Binary form of focal loss.
+
+    FL(p_t) = -alpha * (1 - p_t)**gamma * log(p_t)
+    where p = sigmoid(x), p_t = p or 1 - p depending on if the label is 1 or 0, respectively.
+
+    References:
+        https://arxiv.org/pdf/1708.02002.pdf
+
+    Usage:
+        model.compile(loss=[binary_focal_loss(alpha=.25, gamma=2)], metrics=["accuracy"], optimizer=adam)
+    """
+    from keras import backend as K
+
+    def binary_focal_loss_fixed(y_true, y_pred):
+        """Computes the binary focal loss.
+
+        Args:
+            y_true: A tensor of the same shape as `y_pred`
+            y_pred:  A tensor resulting from a sigmoid
+
+        Returns:
+            A scalar tensor representing the binary focal loss for each element in the batch.
+        """
+        pt_1 = tf.where(tf.equal(y_true, 1), y_pred, tf.ones_like(y_pred))
+        pt_0 = tf.where(tf.equal(y_true, 0), y_pred, tf.zeros_like(y_pred))
+
+        epsilon = K.epsilon()
+        # clip to prevent NaN's and Inf's
+        pt_1 = K.clip(pt_1, epsilon, 1.0 - epsilon)
+        pt_0 = K.clip(pt_0, epsilon, 1.0 - epsilon)
+
+        return -K.sum(alpha * K.pow(1.0 - pt_1, gamma) * K.log(pt_1)) - K.sum(
+            (1 - alpha) * K.pow(pt_0, gamma) * K.log(1.0 - pt_0),
+        )
+
+    return binary_focal_loss_fixed
+
+
+def categorical_focal_loss(gamma=2.0, alpha=0.25):
+    """Softmax version of focal loss.
+
+         m.
+    FL = ∑  -alpha * (1 - p_o,c)^gamma * y_o,c * log(p_o,c)
+        c=1
+    where m = number of classes, c = class and o = observation
+
+    Args:
+        alpha: The same as weighing factor in balanced cross entropy.
+        gamma: Focusing parameter for modulating factor (1-p).
+
+    References:
+        Official paper: https://arxiv.org/pdf/1708.02002.pdf
+        https://www.tensorflow.org/api_docs/python/tf/keras/backend/categorical_crossentropy
+
+    Usage:
+        model.compile(loss=[categorical_focal_loss(alpha=.25, gamma=2)], metrics=["accuracy"], optimizer=adam)
+    """
+    from keras import backend as K
+
+    def categorical_focal_loss_fixed(y_true, y_pred):
+        """Computes the categorical focal loss.
+
+        Args:
+            y_true: A tensor of the same shape as `y_pred`
+            y_pred: A tensor resulting from a softmax
+
+        Returns:
+            Output tensor.
+        """
+        # Scale predictions so that the class probas of each sample sum to 1
+        y_pred /= K.sum(y_pred, axis=-1, keepdims=True)
+
+        # Clip the prediction value to prevent NaN's and Inf's
+        epsilon = K.epsilon()
+        y_pred = K.clip(y_pred, epsilon, 1.0 - epsilon)
+
+        # Calculate Cross Entropy
+        cross_entropy = -y_true * K.log(y_pred)
+
+        # Calculate Focal Loss
+        loss = alpha * K.pow(1 - y_pred, gamma) * cross_entropy
+
+        # Sum the losses in mini_batch
+        return K.sum(loss, axis=1)
+
+    return categorical_focal_loss_fixed

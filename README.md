@@ -1,30 +1,40 @@
 # ipoly
 
-## Project description
+## Introduction
 
-### What is it ?
+**ipoly** (Polymorphic inputs) is a Python package aimed at making various data science tasks easier for users. With ipoly, data scientists can perform tasks such as web scraping, creating models with Tensorflow, visualizing data, handling exceptions, managing various file types, and sending emails, notifications, and generating PDF or LaTeX documents all within Python. The package aims to provide a simple and intuitive interface for these tasks, making it easier for data scientists to focus on what really matters: the data.
 
-**ipoly** is a Python package that provides features that Data Scientist may need that aims to simplify the development thanks to functions using polymorphic inputs.
+## Installation
 
-### Main features
-
-Here are just a few of the things that **ipoly** can do :
-
-- Send emails easily
-- Load most types of file with a unique function looking recursively for the file
-- Save most types of file with a unique function
-- Update a DataFrame with new data easily
-- Generate a .tex or .pdf easily using only Python
-- Prepare automatically a DataFrame for ML (filling missing data, dropping too much correlated features ...)
-
-## Where to get it
-
-The source code is currently hosted on GitHub at: https://github.com/Danguilhen/ipoly
-
-```
+```shell
 pip install ipoly
 ```
 
-## Contributing to ipoly Open Source Helpers
+## Some Features
 
-All contributions, bug reports, bug fixes, documentation improvements, enhancements, and ideas are welcome.
+- Input polymorphism
+- Type checking
+- Dynamic input capturing
+- Web scraping
+- Model creation with Tensorflow
+- Data visualization
+- Exception handling
+- Easy handling of file types
+- Sending emails and notifications
+- Generating PDF or LaTeX
+
+## Documentation
+
+Further documentation can be found [here](<https://ipoly.readthedocs.io/en/latest/source/ipoly.html>).
+
+## Requirements
+
+ipoly requires Python 3.10 or higher.
+
+## Contributing
+
+If you'd like to contribute to the development of ipoly, please see the contributing guidelines.
+
+## License
+
+ipoly is licensed under the MIT License.

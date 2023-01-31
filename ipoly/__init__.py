@@ -1,3 +1,4 @@
+"""Python package making Data Science tasks easier."""
 from typeguard.importhook import install_import_hook
 
 with install_import_hook("ipoly"):
@@ -8,3 +9,4 @@ with install_import_hook("ipoly"):
     from ipoly.traceback import *
     from ipoly.ml import *
     from ipoly.scraping import *
+    from ipoly.visualisation import *
