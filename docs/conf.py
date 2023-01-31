@@ -26,6 +26,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.githubpages",
     "sphinx_search.extension",
+    "sphinxcontrib.fulltoc",
 ]
 
 
@@ -59,8 +60,7 @@ with readme_target.open("w") as outf:
     outf.write(
         "\n".join(
             [
-                "Readme",
-                "======",
+                "# Readme\n",
             ],
         ),
     )
@@ -78,8 +78,7 @@ with contributing_target.open("w") as outf:
     outf.write(
         "\n".join(
             [
-                "Contributing",
-                "============",
+                "# Contributing\n",
             ],
         ),
     )

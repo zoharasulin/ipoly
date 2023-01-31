@@ -10,3 +10,4 @@ sphinx-autodocgen
 readthedocs-sphinx-search
 notebook
 pre-commit
+sphinxcontrib-fulltoc

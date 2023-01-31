@@ -39,7 +39,7 @@ We would like to extend our thanks to the following contributors for helping to 
   <img src="https://contrib.rocks/image?repo=Danguilhen/ipoly" />
 </a></center>
 
-If you'd like to contribute to the development of ipoly, please see the [contributing guidelines](<https://ipoly.readthedocs.io/en/latest/CONTRIBUTING.html>).
+If you'd like to contribute to the development of ipoly, please see the [contributing guidelines](<https://ipoly.readthedocs.io/en/latest/contributing.html>).
 
 ## License
 

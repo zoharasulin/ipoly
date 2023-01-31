@@ -4,7 +4,7 @@ Thank you for your interest in contributing to ipoly! There are many ways to con
 
 ## Reporting bugs
 
-If you find a bug in ipoly, please report it by [opening an issue](https://github.com/your-username/ipoly/issues) on GitHub. When reporting a bug, please include the following information:
+If you find a bug in ipoly, please report it by [opening an issue](https://github.com/Danguilhen/ipoly/issues) on GitHub. When reporting a bug, please include the following information:
 
 * A clear and descriptive title for the issue.
 * A description of the problem, including any error messages you received.
@@ -13,7 +13,7 @@ If you find a bug in ipoly, please report it by [opening an issue](https://githu
 
 ## Suggesting new features
 
-If you have a suggestion for a new feature in ipoly, please [open an issue](https://github.com/your-username/ipoly/issues) on GitHub. When making a suggestion, please include the following information:
+If you have a suggestion for a new feature in ipoly, please [open an issue](https://github.com/Danguilhen/ipoly/issues) on GitHub. When making a suggestion, please include the following information:
 
 * A clear and descriptive title for the issue.
 * A description of the problem you're trying to solve or the use case you're trying to support.

@@ -1,5 +1,5 @@
-Readme
-======
+# Readme
+
 ## Introduction
 
 **ipoly** (Polymorphic inputs) is a Python package aimed at making various data science tasks easier for users. With ipoly, data scientists can perform tasks such as web scraping, creating models with Tensorflow, visualizing data, handling exceptions, managing various file types, and sending emails, notifications, and generating PDF or LaTeX documents all within Python. The package aims to provide a simple and intuitive interface for these tasks, making it easier for data scientists to focus on what really matters: the data.
@@ -39,7 +39,7 @@ We would like to extend our thanks to the following contributors for helping to 
   <img src="https://contrib.rocks/image?repo=Danguilhen/ipoly" />
 </a></center>
 
-If you'd like to contribute to the development of ipoly, please see the [contributing guidelines](<https://ipoly.readthedocs.io/en/latest/CONTRIBUTING.html>).
+If you'd like to contribute to the development of ipoly, please see the [contributing guidelines](<https://ipoly.readthedocs.io/en/latest/contributing.html>).
 
 ## License
 
