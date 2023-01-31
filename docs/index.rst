@@ -7,6 +7,7 @@ Welcome to ipoly's documentation!
 
    source/modules
    readme
+   contributing
    license.rst
 
 
