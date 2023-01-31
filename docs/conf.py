@@ -26,7 +26,6 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.githubpages",
     "sphinx_search.extension",
-    "sphinxcontrib.fulltoc",
 ]
 
 
