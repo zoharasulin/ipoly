@@ -7,6 +7,7 @@ Welcome to ipoly's documentation!
 
    source/modules
    readme
+   contributing
    license.rst
 
 
@@ -15,4 +16,3 @@ Indices and tables
 
 * :ref:`genindex`
 * :ref:`modindex`
-* :ref:`search`

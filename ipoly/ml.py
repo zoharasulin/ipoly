@@ -1,14 +1,14 @@
+"""Provide routines for Machine Learning."""
 import random
+from typing import Literal
+from typing import Tuple
+
 import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
-from pandas import DataFrame
-from typing import Iterable, Any, Tuple, Literal
-from sklearn import metrics
-from nptyping import NDArray, Int
 import pandas as pd
-from ipoly.file_management import caster
 import tensorflow as tf
+
+from ipoly.file_management import caster
+from ipoly.traceback import raiser
 
 
 def set_seed(seed: int = 42) -> None:
@@ -16,9 +16,7 @@ def set_seed(seed: int = 42) -> None:
 
     Args:
         seed: The seed value to set.
-
     """
-
     from tensorflow import random as tfr
     from torch.backends import cudnn
     from torch.cuda import manual_seed as cuda_manual_seed
@@ -35,109 +33,6 @@ def set_seed(seed: int = 42) -> None:
     cudnn.benchmark = False
 
 
-def plot_history(history, keys: list[str] = None) -> None:
-    """Plot the history of a Tensorflow training for each metrics.
-
-    Args:
-        history: The history to plot.
-        keys: List of all metrics that will be plot.Plot all metrics
-            if not specified.
-
-    """
-
-    if keys is None:
-        keys = history.history.keys()
-    for key in keys:
-        plt.plot(history.history[key])
-        plt.plot(history.history["val_accuracy"])
-        plt.legend(["train", "val"], loc="upper left")
-        plot("model accuracy", "epoch", "accuracy")
-
-
-def plot_correlation_matrix(df: DataFrame) -> None:
-    """Plot the correlation matrix of your DataFrame.
-
-    Args:
-        df: The input DataFrame.
-
-    """
-
-    corr = df.corr()
-    # Generate a mask for the upper triangle
-    mask = np.triu(np.ones_like(corr, dtype=bool))
-    # Set up the matplotlib figure
-    f, ax = plt.subplots(figsize=(11, 9))
-    # Generate a custom diverging colormap
-    cmap = sns.diverging_palette(230, 20, as_cmap=True)
-    # Draw the heatmap with the mask and correct aspect ratio
-    sns.heatmap(
-        corr,
-        mask=mask,
-        cmap=cmap,
-        vmax=0.3,
-        center=0,
-        square=True,
-        linewidths=0.5,
-        cbar_kws={"shrink": 0.5},
-    )
-
-
-def _confusion_matrix(confusion_matrix, axes, class_names, fontsize=14):
-
-    df_cm = DataFrame(
-        confusion_matrix,
-        index=class_names,
-        columns=class_names,
-    )
-
-    try:
-        heatmap = sns.heatmap(df_cm, annot=True, fmt="d", cbar=False, ax=axes)
-    except ValueError:
-        raise ValueError("Confusion matrix values must be integers.")
-    heatmap.yaxis.set_ticklabels(
-        heatmap.yaxis.get_ticklabels(), rotation=0, ha="right", fontsize=fontsize
-    )
-    heatmap.xaxis.set_ticklabels(
-        heatmap.xaxis.get_ticklabels(), rotation=45, ha="right", fontsize=fontsize
-    )
-    axes.set_ylabel("True label")
-    axes.set_xlabel("Predicted label")
-
-
-def plot_confusion_matrix(
-    y_pred: NDArray[Any, Int], y_true: NDArray[Any, Int], labels: Iterable[str] = None
-):
-    """Plot the confusion matrix.
-
-    It determines by itself if it has to plot a simple confusion matrix
-    or multiple  ones in case of multilabel classification.
-
-    Args:
-        y_pred: Predicted logits.
-        y_true: True labels.
-        labels: Labels name. Need to be specified only if it is a
-            multilabel classification.
-
-    """
-
-    fig, ax = plt.subplots(2, 2, figsize=(10, 7))
-    if ((np.unique(y_true.sum(axis=1)) == 1).all()) or (len(y_true.shape) == 1):
-        if len(y_true.shape) == 2:
-            y_true = y_true.argmax(axis=1)
-            y_pred = y_pred.argmax(axis=1)
-        _confusion_matrix(
-            metrics.confusion_matrix(y_true, y_pred), ax.flatten(), ["N", "Y"]
-        )
-    else:
-        confusion_matrix = metrics.multilabel_confusion_matrix(y_true, y_pred)
-        for axes, cfs_matrix, label in zip(ax.flatten(), confusion_matrix, labels):
-            _confusion_matrix(cfs_matrix, axes, ["N", "Y"])
-            axes.set_title("Confusion Matrix for the class - " + label)
-
-        fig.tight_layout()
-        plt.show()
-
-
 def croper(image: np.array, margin: int = 18) -> np.array:
     """Crop the white areason the borders of the input image.
 
@@ -147,11 +42,9 @@ def croper(image: np.array, margin: int = 18) -> np.array:
 
     Returns:
         The cropped image.
-
     """
-
     if len(np.unique(image)) == 1:
-        raise Exception("The image is composed of a single color.")
+        raiser("The image is composed of a single color.")
     if len(image.shape) == 3:
         image_sum = image.sum(axis=2) % 765
     else:
@@ -175,9 +68,7 @@ def get_weighted_loss(pos_weights, neg_weights, epsilon=1e-7):
 
     Returns:
         The loss classic function for the lost function.
-
     """
-
     from keras import backend as K
     from tensorflow import cast, float32
 
@@ -192,46 +83,15 @@ def get_weighted_loss(pos_weights, neg_weights, epsilon=1e-7):
                 -(
                     (pos_weights * y_true * K.log(y_pred + epsilon))
                     + (neg_weights * (1 - y_true) * K.log(1 - y_pred + epsilon))
-                )
+                ),
             )  # complete this line
         return loss
 
     return weighted_loss
 
 
-def plot(
-    title: str = None,
-    xlabel: str = None,
-    ylabel: str = None,
-    figsize: Any = None,
-    grid: bool = False,
-    xticks: Tuple[int] = None,
-    yticks: Tuple[int] = None,
-):
-    fig = plt.figure(figsize=figsize, dpi=100)
-    fig.patch.set_facecolor("xkcd:white")
-    plt.xticks(rotation=45, ha="right")
-
-    plt.legend(bbox_to_anchor=(1.05, 1))
-    if xticks:
-        plt.yticks(np.arange(*xticks))
-    if yticks:
-        plt.yticks(np.arange(*yticks))
-    plt.grid(grid)
-    if ylabel:
-        plt.ylabel(ylabel)
-    if xlabel:
-        plt.xlabel(xlabel)
-    if title:
-        plt.title(title)
-    if ".png" in title:
-        plt.savefig(title)
-    else:
-        plt.show()
-    plt.close()
-
-
 def path(path: str) -> str:
+    r"""Replace \ and / of a path according to the user platform."""
     from platform import system as ps
 
     if ps() == "Windows":
@@ -240,6 +100,11 @@ def path(path: str) -> str:
 
 
 def interpolator(df: pd.DataFrame) -> pd.DataFrame:
+    """Interpolate the missing values.
+
+    It does use NearestNDInterpolator from scipy to do the
+    interpolation.
+    """
     from scipy.interpolate import NearestNDInterpolator
 
     array = np.array(df)
@@ -248,7 +113,9 @@ def interpolator(df: pd.DataFrame) -> pd.DataFrame:
         idxs = list(range(array.shape[1]))
         idxs.pop(i)
         my_interpolator = NearestNDInterpolator(
-            filled_array[:, idxs], filled_array[:, i], rescale=True
+            filled_array[:, idxs],
+            filled_array[:, i],
+            rescale=True,
         )
         array[:, i] = np.apply_along_axis(
             lambda row: my_interpolator(*row[idxs]) if np.isnan(row[i]) else row[i],
@@ -258,8 +125,24 @@ def interpolator(df: pd.DataFrame) -> pd.DataFrame:
     return caster(pd.DataFrame(array, columns=df.columns, index=df.index))
 
 
+def subfinder(mylist: list | pd.Index, pattern: list | pd.Index) -> list:
+    """Finds all elements of `mylist` that are present in `pattern`.
+
+    Args:
+        mylist : list or pd.Index, the list to search in.
+        pattern : list or pd.Index, the list of elements to search for.
+
+    Returns:
+        A list of elements of `mylist` that are present in `pattern`
+    """
+    mylist = list(mylist)
+    pattern = list(pattern)
+    return list(filter(lambda x: x in pattern, mylist))
+
+
 def prepare_table(
-    df: pd.DataFrame,
+    train_df: pd.DataFrame,
+    test_df: pd.DataFrame = None,
     y: str | list[str] = "",
     correlation_threshold: float = 0.9,
     missing_rows_threshold: float = 0.9,
@@ -267,73 +150,115 @@ def prepare_table(
     categories_ratio_threshold: float = 0.1,
     id_correlation_threshold: float = 0.04,
     verbose: bool = False,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+) -> Tuple[pd.DataFrame, pd.DataFrame] | Tuple[
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+]:
     """Prepare the table to feed a ML model.
 
     Args:
-        df : The DaaFrame to prepare for Machine Learning.
+        train_df : The training DataFrame to prepare for Machine Learning.
+        test_df : The test DataFrame to prepare for Machine Learning. It is prepared the same way train_df is.
         y : Column(s) name(s) of target variable(s).
-
+        correlation_threshold : The column is removed if its correlation with another is higher than this threshold.
+        missing_rows_threshold : The row is removed if the proportion of its non-empty cells is lower than this threshold.
+        missing_columns_threshold : The column is removed if its proportion of non-empty cells is lower than this threshold.
+        categories_ratio_threshold : The column is removed if its proportion of non unique values is higher than this threshold.
+        id_correlation_threshold : The column is removed if all its values are unique the mean correlation with other columns is less than this threshold.
+        verbose : Print realised actions if True.
     """
-
     y = [y] if not y is list else y
-    category_columns = df.select_dtypes(include=["category", object]).columns
-    # Drop rows with NaNs in tye y columns
+    if len(y) != len(subfinder(y, train_df.columns)):
+        raiser("y variable is not in df columns", Exception)
+
+    train_df = caster(train_df)
+    if test_df is not None:
+        test_df = caster(
+            test_df,
+        )  # TODO Modify caster to be able to process multiple dfs at once.
+    category_columns = train_df.select_dtypes(include=["category", object]).columns
+    # Drop rows with NaNs in the y columns
     if y != [""]:
         for col in y:
-            df = df[df[col].notna()]
+            train_df = train_df[train_df[col].notna()]
     # Drop the categorical columns with too much categories
-    df = df.drop(
-        [
-            col
-            for col in category_columns
-            if df[col].nunique() / len(df) > categories_ratio_threshold
-        ],
+    droped_category_columns = [
+        col
+        for col in category_columns
+        if train_df[col].nunique() / len(train_df) > categories_ratio_threshold
+    ]
+    train_df = train_df.drop(
+        droped_category_columns,
         axis=1,
     )
+    if test_df is not None:
+        test_df = test_df.drop(
+            droped_category_columns,
+            axis=1,
+        )
     # Convert categorical data to numerical ones
-    df = pd.get_dummies(df)
+    train_df = pd.get_dummies(train_df)
+    if test_df is not None:
+        test_df = pd.get_dummies(test_df)
     # Drop columns with not enough data
-    df = df.loc[
+    empty_columns = train_df.apply(
+        lambda col: (1 - col.count() / len(train_df.index)) < missing_columns_threshold,
+        axis=0,
+    )
+    empty_columns = empty_columns[empty_columns].index
+    train_df = train_df.loc[
         :,
-        df.apply(
-            lambda col: (1 - col.count() / len(df.index)) < missing_columns_threshold,
-            axis=0,
-        ),
+        empty_columns,
     ]
+    if test_df is not None:
+        test_df = test_df.loc[
+            :,
+            [x for x in empty_columns if x not in y],
+        ]
     # Drop rows with not enough data
-    df = df[
-        df.apply(
-            lambda row: (1 - row.count() / len(df.columns)) < missing_rows_threshold,
+    train_df = train_df[
+        train_df.apply(
+            lambda row: (1 - row.count() / len(train_df.columns))
+            < missing_rows_threshold,
             axis=1,
         )
     ]
     correlate_couples = []
-    corr = df.corr().abs()
+    corr = train_df.corr().abs()
     for col in corr:
         for index, val in corr[col].items():
             if val > correlation_threshold and (index != col):
                 if (index, col) not in correlate_couples:
                     correlate_couples.append((col, index))
-        if (df[col].nunique() == df.shape[0]) and (
+        if (train_df[col].nunique() == train_df.shape[0]) and (
             (corr[col].sum() - 1) / corr.shape[0] < id_correlation_threshold
-        ):  # TODO améliorer
+        ):  # TODO improve
             # Drop ids columns (unique values with low correlations with other columns)
             if not col in y:
-                df = df.drop(col, axis=1)
+                train_df = train_df.drop(col, axis=1)
+                if test_df is not None:
+                    test_df = test_df.drop(col, axis=1)
     for couple in correlate_couples:
         # Drop a column if highly correlated with another one
         if not any(elem in couple for elem in y):
-            df = df.drop(couple[0], axis=1)
-    if verbose:
-        print("")
-    return interpolator(df.drop(y, axis=1)), df[y]
+            train_df = train_df.drop(couple[0], axis=1)
+            if test_df is not None:
+                test_df = test_df.drop(couple[0], axis=1)
+    if test_df is not None:
+        return (
+            interpolator(train_df.drop(y, axis=1)),
+            train_df[y],
+            interpolator(test_df),
+        )
+    return interpolator(train_df.drop(y, axis=1)), train_df[y]
 
 
 def get_optimizer(
     type: Literal["Adam", "SGD", "RMSprop", "Adadelta", "Adamax", "Nadam", "Ftrl"],
     learning_rate,
 ):
+    """Returns the selected Tensorflow's optimizer."""
     from tensorflow import keras
 
     match type:
@@ -356,35 +281,52 @@ def get_optimizer(
     return optimizer
 
 
-class SavePretrainedCallback(tf.keras.callbacks.Callback):
-    # Hugging Face models have a save_pretrained() method that saves both the weights and the necessary
-    # metadata to allow them to be loaded as a pretrained model in future. This is a simple Keras callback
-    # that saves the model with this method after each epoch.
-    def __init__(self, output_dir):
-        super().__init__()
-        self.output_dir = output_dir
+def get_lr_callback(strategy):
+    """Return a learning rate callback."""
+    LR_START = 0.00001
+    LR_MAX = 0.00005 * strategy.num_replicas_in_sync
+    LR_MIN = 0.00001
+    LR_RAMPUP_EPOCHS = 4
+    LR_SUSTAIN_EPOCHS = 4
+    LR_EXP_DECAY = 0.8
 
-    def on_epoch_end(self, _epoch, _logs=None):
-        self.model.save_pretrained(self.output_dir)
+    def lrfn(epoch):
+        if epoch < LR_RAMPUP_EPOCHS:
+            lr = (LR_MAX - LR_START) / LR_RAMPUP_EPOCHS * epoch + LR_START
+        elif epoch < LR_RAMPUP_EPOCHS + LR_SUSTAIN_EPOCHS:
+            lr = LR_MAX
+        else:
+            lr = (LR_MAX - LR_MIN) * LR_EXP_DECAY ** (
+                epoch - LR_RAMPUP_EPOCHS - LR_SUSTAIN_EPOCHS
+            ) + LR_MIN
+        return lr
+
+    return tf.keras.callbacks.LearningRateScheduler(lrfn, verbose=0)
 
 
-def get_callbacks():
+def get_callbacks(strategy, model_name):
     """Get the main callbacks for a Tensorflow model."""
-
-    import tensorflow_addons as tfa
     from datetime import datetime
+    from os import makedirs
 
-    def scheduler(_, lr):
-        return lr * tf.math.exp(-0.1)
-
-    scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
+    scheduler = get_lr_callback(strategy)
     logdir = "logs/image/" + datetime.now().strftime("%Y%m%d-%H%M%S")
     tensorboard_callback = tf.keras.callbacks.TensorBoard(
-        log_dir=logdir, histogram_freq=1
+        log_dir=logdir,
+        histogram_freq=1,
+    )
+    makedirs("checkpoints", exist_ok=True)
+    chk_callback = tf.keras.callbacks.ModelCheckpoint(
+        f"checkpoints/{model_name}_best.h5",
+        save_weights_only=True,
+        monitor="val_f1_score",
+        mode="max",
+        save_best_only=True,
+        verbose=1,
     )
     return [
+        chk_callback,
         tensorboard_callback,
-        # tfa.callbacks.TQDMProgressBar(),
         tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=1),
         scheduler,
     ]
@@ -397,7 +339,6 @@ def compile_model(model, is_regression: bool, *args, **kwargs):
         model : The model architecture to compile.
         is_regression : Whenever the prediction task is a classification one or a regression one.
     """
-
     import tensorflow_addons as tfa
 
     optimizer = get_optimizer(*args, **kwargs)
@@ -424,13 +365,20 @@ def load_transformers(
     config_name: str = None,
     config_changes: dict = None,
 ):
-    """Load a transformer, a configuration and a tokenizer from 'transformers' library.
+    """Load a model and a tokenizer from the 'transformers' library.
 
     Args:
+        overwrite_output_dir : Overwrite the previous training.
+        output_dir : Directory to save the training.
+        num_labels : The number of predicted labels.
+        model_name_or_path : Name or path of the transformer model.
+        cache_dir : The directory for caching the operations.
+        model_revision : The revision of the transformer model.
+        use_auth_token : Whether to use an authentication token or not.
         tokenizer_name : The name of the tokenizer from HuggingFace.
         config_name : The name of the configuration from HuggingFace.
+        config_changes : Config cahnges with a different value than the default value of the configuration.
     """
-
     from transformers import AutoConfig
     from transformers import AutoTokenizer
     from transformers import TFAutoModelForSequenceClassification
@@ -452,7 +400,7 @@ def load_transformers(
         else:
             raise ValueError(
                 f"Output directory ({output_dir}) already exists and is not empty. "
-                "Use --overwrite_output_dir to continue regardless."
+                "Use --overwrite_output_dir to continue regardless.",
             )
 
     if checkpoint is not None:
@@ -514,9 +462,7 @@ def flatten(l):
 
     Args:
         l : The list to flatten.
-
     """
-
     return [item for sublist in l for item in sublist]
 
 
@@ -527,9 +473,7 @@ def compute_position(sentence: str | list, target: int, tokenizer) -> int:
         sentence : The sentence.
         target : The position of the targeted word in the sentence.
         tokenizer : The tokenizer to compute tokens.
-
     """
-
     if type(sentence) == str:
         sentence = sentence.split(" ")
     position = 0
@@ -541,18 +485,20 @@ def compute_position(sentence: str | list, target: int, tokenizer) -> int:
     return position + 2
 
 
-def train(model, train, val, epochs, batch_size):
+def train(model, strategy, model_name, train, val, epochs, batch_size):
+    """Fit a tensorflow model."""
     return model.fit(
         train[0],
         train[1],
         validation_data=val,
         epochs=epochs,
         batch_size=batch_size,
-        callbacks=get_callbacks(),
+        callbacks=get_callbacks(strategy, model_name),
     )
 
 
 def evaluate(model, train, val, test):
+    """Evaluate a model for all datasets."""
     train_loss, train_metrics = model.evaluate(train[0], train[1])
     val_loss, val_metrics = model.evaluate(val[0], val[1])
     test_loss, test_metrics = model.evaluate(test[0], test[1])
@@ -572,9 +518,7 @@ def get_strategy(mixed_precision: bool = False, xla_accelerate: bool = False):
 
     Returns:
         The distribute strategy if you are not using a TPU and the experimental distribute strategy if you are.
-
     """
-
     try:
         tpu = tf.distribute.cluster_resolver.TPUClusterResolver()
     except ValueError:
@@ -595,3 +539,217 @@ def get_strategy(mixed_precision: bool = False, xla_accelerate: bool = False):
     if xla_accelerate:
         tf.config.optimizer.set_jit(True)
     return strategy
+
+
+def find_best_model(X: pd.DataFrame, y: pd.DataFrame, seed: int = 42):
+    """Finds the best machine learning model for the given dataset.
+
+    Args:
+        X : The input dataset.
+        y : The target dataset.
+        seed : The seed used for reproducibility, by default 42
+
+    Returns:
+        The best model, which can be an instance of a classifier.
+    """
+    from sklearn.ensemble import (
+        BaggingClassifier,
+        AdaBoostClassifier,
+        ExtraTreesClassifier,
+        RandomForestClassifier,
+    )
+    from sklearn.linear_model import (
+        RidgeClassifierCV,
+        RidgeClassifier,
+        SGDClassifier,
+        Perceptron,
+        PassiveAggressiveClassifier,
+        LogisticRegression,
+    )
+    from sklearn.neighbors import NearestCentroid, KNeighborsClassifier
+    from sklearn.calibration import CalibratedClassifierCV
+    from sklearn.dummy import DummyClassifier
+    from sklearn.discriminant_analysis import (
+        LinearDiscriminantAnalysis,
+        QuadraticDiscriminantAnalysis,
+    )
+    from sklearn.semi_supervised import LabelSpreading, LabelPropagation
+    from sklearn.tree import ExtraTreeClassifier, DecisionTreeClassifier
+    from sklearn.svm import NuSVC, LinearSVC, SVC
+    from sklearn.naive_bayes import BernoulliNB, GaussianNB
+    from xgboost import XGBClassifier
+    from lightgbm import LGBMClassifier
+    from lazypredict.Supervised import LazyClassifier
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import accuracy_score
+    from sklearn.model_selection import GridSearchCV
+
+    set_seed(seed)
+
+    # split the data into training and testing sets
+    X_train, X_test, Y_train, Y_test = train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        random_state=seed,
+    )
+
+    # initialize the LazyClassifier
+    clf = LazyClassifier(verbose=0, ignore_warnings=True, custom_metric=None)
+
+    # fit the classifier with train data
+    models, predictions = clf.fit(X_train, X_test, Y_train, Y_test)
+
+    best_acc = 0
+    best_model = None
+
+    # initialize the models to be tested
+    models = {
+        "LGBMClassifier": LGBMClassifier(),
+        "XGBClassifier": XGBClassifier(),
+        "KNeighborsClassifier": KNeighborsClassifier(),
+        "SGDClassifier": SGDClassifier(),
+        "RidgeClassifierCV": RidgeClassifierCV(),
+        "RidgeClassifier": RidgeClassifier(),
+        "ExtraTreeClassifier": ExtraTreeClassifier(),
+        "LinearDiscriminantAnalysis": LinearDiscriminantAnalysis(),
+        "LabelSpreading": LabelSpreading(),
+        "AdaBoostClassifier": AdaBoostClassifier(),
+        "NuSVC": NuSVC(),
+        "DecisionTreeClassifier": DecisionTreeClassifier(),
+        "LinearSVC": LinearSVC(),
+        "ExtraTreesClassifier": ExtraTreesClassifier(),
+        "BernoulliNB": BernoulliNB(),
+        "BaggingClassifier": BaggingClassifier(),
+        "GaussianNB": GaussianNB(),
+        "LabelPropagation": LabelPropagation(),
+        "LogisticRegression": LogisticRegression(),
+        "RandomForestClassifier": RandomForestClassifier(),
+        "NearestCentroid": NearestCentroid(),
+        "Perceptron": Perceptron(),
+        "CalibratedClassifierCV": CalibratedClassifierCV(),
+        "SVC": SVC(),
+        "QuadraticDiscriminantAnalysis": QuadraticDiscriminantAnalysis(),
+        "DummyClassifier": DummyClassifier(),
+        "PassiveAggressiveClassifier": PassiveAggressiveClassifier(),
+    }
+
+    # sort the models by accuracy
+    predictions = {
+        k: v
+        for k, v in sorted(predictions.items(), key=lambda item: item, reverse=True)
+    }
+
+    # take the best 3 models
+    best_models = dict(list(predictions.items())[4][1][:3])
+
+    # iterate through the models and parameters
+    for model_name, _ in best_models.items():
+        model = models[model_name]
+        # define the parameters for each model
+        params = {key: [value] for key, value in model.get_params().items()}
+
+        optimizer = GridSearchCV(estimator=model, param_grid=params, cv=5)
+        optimizer.fit(X_train, Y_train)
+
+        # predict on the test set
+        Y_pred = optimizer.predict(X_test)
+
+        # calculate the accuracy
+        acc = accuracy_score(Y_test, Y_pred)
+
+        # update the best model if necessary
+        if acc > best_acc:
+            best_acc = acc
+            best_model = model
+    best_model = best_model.fit(X, y)
+    return best_model
+
+
+def binary_focal_loss(gamma=2.0, alpha=0.25):
+    """Binary form of focal loss.
+
+    FL(p_t) = -alpha * (1 - p_t)**gamma * log(p_t)
+    where p = sigmoid(x), p_t = p or 1 - p depending on if the label is 1 or 0, respectively.
+
+    References:
+        https://arxiv.org/pdf/1708.02002.pdf
+
+    Usage:
+        model.compile(loss=[binary_focal_loss(alpha=.25, gamma=2)], metrics=["accuracy"], optimizer=adam)
+    """
+    from keras import backend as K
+
+    def binary_focal_loss_fixed(y_true, y_pred):
+        """Computes the binary focal loss.
+
+        Args:
+            y_true: A tensor of the same shape as `y_pred`
+            y_pred:  A tensor resulting from a sigmoid
+
+        Returns:
+            A scalar tensor representing the binary focal loss for each element in the batch.
+        """
+        pt_1 = tf.where(tf.equal(y_true, 1), y_pred, tf.ones_like(y_pred))
+        pt_0 = tf.where(tf.equal(y_true, 0), y_pred, tf.zeros_like(y_pred))
+
+        epsilon = K.epsilon()
+        # clip to prevent NaN's and Inf's
+        pt_1 = K.clip(pt_1, epsilon, 1.0 - epsilon)
+        pt_0 = K.clip(pt_0, epsilon, 1.0 - epsilon)
+
+        return -K.sum(alpha * K.pow(1.0 - pt_1, gamma) * K.log(pt_1)) - K.sum(
+            (1 - alpha) * K.pow(pt_0, gamma) * K.log(1.0 - pt_0),
+        )
+
+    return binary_focal_loss_fixed
+
+
+def categorical_focal_loss(gamma=2.0, alpha=0.25):
+    """Softmax version of focal loss.
+
+         m.
+    FL = ∑  -alpha * (1 - p_o,c)^gamma * y_o,c * log(p_o,c)
+        c=1
+    where m = number of classes, c = class and o = observation
+
+    Args:
+        alpha: The same as weighing factor in balanced cross entropy.
+        gamma: Focusing parameter for modulating factor (1-p).
+
+    References:
+        Official paper: https://arxiv.org/pdf/1708.02002.pdf
+        https://www.tensorflow.org/api_docs/python/tf/keras/backend/categorical_crossentropy
+
+    Usage:
+        model.compile(loss=[categorical_focal_loss(alpha=.25, gamma=2)], metrics=["accuracy"], optimizer=adam)
+    """
+    from keras import backend as K
+
+    def categorical_focal_loss_fixed(y_true, y_pred):
+        """Computes the categorical focal loss.
+
+        Args:
+            y_true: A tensor of the same shape as `y_pred`
+            y_pred: A tensor resulting from a softmax
+
+        Returns:
+            Output tensor.
+        """
+        # Scale predictions so that the class probas of each sample sum to 1
+        y_pred /= K.sum(y_pred, axis=-1, keepdims=True)
+
+        # Clip the prediction value to prevent NaN's and Inf's
+        epsilon = K.epsilon()
+        y_pred = K.clip(y_pred, epsilon, 1.0 - epsilon)
+
+        # Calculate Cross Entropy
+        cross_entropy = -y_true * K.log(y_pred)
+
+        # Calculate Focal Loss
+        loss = alpha * K.pow(1 - y_pred, gamma) * cross_entropy
+
+        # Sum the losses in mini_batch
+        return K.sum(loss, axis=1)
+
+    return categorical_focal_loss_fixed

@@ -1,26 +1,44 @@
-import re
-import os
+"""Provide routines for managing data in files."""
+import copy
 import glob
-from typing import Literal, Tuple, Iterable
+import os
+import re
+import string
+from collections import Counter
+from typing import Iterable
+from typing import List
+from typing import Literal
+from typing import Optional
+from typing import Tuple
+
+import numpy as np
+import pandas as pd
+import pyarrow as pa
 import pyarrow.parquet as pq
 import xlrd
-import pandas as pd
-import numpy as np
-import pyarrow as pa
-from colorama import Fore, Back, Style
-from collections import Counter
-import string
-import copy
-from typing import Optional, List
+from colorama import Back
+from colorama import Fore
+from colorama import Style
+
+from ipoly.traceback import raiser
 
 SILLY_DELIMITERS = frozenset(string.ascii_letters + string.digits + ".")
 
 
 def caster(df: pd.DataFrame):
+    """Cast automatically columns in DataFrames.
+
+    The columns with a data type as object are casted automaticallyas float, int or Datatime according to their pattern.
+
+    Args:
+        df: The DataFrame to cast.
+    """
     string_cols = [col for col, col_type in df.dtypes.items() if col_type == "object"]
     if len(string_cols) > 0:
         mask = df.astype(str).apply(
-            lambda x: x.str.match(r"(\d{1,4}[-/\\\. ]\d{1,2}[-/\\\. ]\d{2,4})+.*").any()
+            lambda x: x.str.match(
+                r"(\d{1,4}[-/\\\. ]\d{1,2}[-/\\\. ]\d{2,4})+.*",
+            ).any(),
         )
 
         def excel_date(x):
@@ -29,7 +47,7 @@ def caster(df: pd.DataFrame):
             x = x.apply(
                 lambda y: xlrd.xldate.xldate_as_datetime(y, 0)
                 if type(y) in (int, float)
-                else y
+                else y,
             )
             return x.astype("datetime64[ns]")
 
@@ -51,26 +69,54 @@ def caster(df: pd.DataFrame):
             col.dtype in [np.dtype("float64"), np.dtype("float32"), np.dtype("float16")]
         )
         or col.isna().any()
-        or pd.Series((col.apply(np.int64) == col)).sum() != df.shape[0]
+        or pd.Series(col.apply(np.int64) == col).sum() != df.shape[0]
         else col.apply(np.int64),
         axis=0,
     )
     return df
 
 
+def locate_files(file: str, recursive: bool = True) -> Tuple[List[str], str]:
+    """Returns a list of file paths matching the given pattern of file name(s).
+
+    Args:
+        file: The name (or pattern) of the file to be located.
+        recursive: Whether to search recursively through subdirectories.
+
+    Returns:
+        list: A list of file paths matching the given file name and directory.
+    """
+    split_path = file.split("/")
+    if len(split_path) == 1:
+        directory = "./"
+    else:
+        file = split_path[-1]
+        directory = "/".join(split_path[:-1])
+    del split_path
+    file_format = file.split(".")[-1]
+    if len(file_format) + 1 >= len(file):
+        file_format = None
+    if recursive:
+        pathname = "**/" + directory + "/**/" + file
+    else:
+        pathname = directory + "/" + file
+    return glob.glob(pathname, recursive=recursive), file_format
+
+
 def load(
     file: str | Iterable[str],
     sheet: int = 1,
-    skiprows = None,
+    skiprows=None,
     on: str = "index",
     classic_data: bool = True,
     recursive: bool = True,
     has_title: bool = True,
-    has_index: bool = True
+    has_index: bool = True,
+    ordered: bool = False,
 ):
     """Load files or folders for most used file types.
 
-    Allowed file extensions are :
+    Supported file extensions are :
         - csv
         - xlsx
         - xls
@@ -83,51 +129,52 @@ def load(
         - json
         - parquet
         - wav
+        - yaml
+        - tfrec
 
     Args:
-        file: The file or folder name.
+        file : The path to the file or a list of file paths.
             If it is a folder, all supported file types will be
             loaded in a list.
-        sheet:
-        skiprows:
-        on:
-        classic_data:
-        recursive:
-
+        sheet : Sheet number to extract if the file format is xlsx, xls, or xlsm. Defaults to 1.
+        skiprows : Number of rows to skip from the start of the file. Defaults to None.
+        on : Column name to use as the index for the dataframe. Defaults to 'index'.
+        classic_data : Drop duplicated rows and replace Nulls by NaNs Defaults to True.
+        recursive : Whether to search for the file in subdirectories. Defaults to True.
+        has_title : Whether the file has a title line. Defaults to True.
+        has_index : Whether the file has an index column. Defaults to True.
+        ordered : Whether to return the data in the order it was stored. Defaults to False.
     """
-
     if type(file) != str:
         return [
             load(elem, sheet, skiprows, on, classic_data, recursive) for elem in file
         ]
-    split_path = file.split("/")
-    if len(split_path) == 1:
-        directory = "./"
-    else:
-        file = split_path[-1]
-        directory = "/".join(split_path[:-1])
-    del split_path
-    file_format = file.split(".")[-1]
-    if len(file_format) + 1 >= len(file):
-        file_format = None
-    if recursive:
-        pathname = directory + "/**/" + file
-    else:
-        pathname = directory + "/" + file
-    files = glob.glob(pathname, recursive=recursive)
-    if len(files) > 1:
-        print(
+    files, file_format = locate_files(file, recursive)
+    if len(files) > 1 and (file_format != "tfrec"):
+        raiser(
             "There are multiple files with '"
             + file
-            + "' name in the directory/subdirectories"
-        )  # TODO check multi extension
-        raise Exception
+            + "' name in the directory/subdirectories",
+        )
     elif len(files) == 0:
         print("Warning : The file '" + file + "' wasn't found !")
         return pd.DataFrame()
-
-    file = files[0].split(file)[0] + file
+    if file_format != "tfrec":
+        file = files[0].split(file)[0] + file
     match file_format:
+        case "tfrec":
+            import tensorflow as tf
+
+            AUTO = tf.data.experimental.AUTOTUNE
+            ignore_order = tf.data.Options()
+            if not ordered:
+                ignore_order.experimental_deterministic = (
+                    False  # disable order, increase speed
+                )
+            dataset = tf.data.TFRecordDataset(files, num_parallel_reads=AUTO)
+            return dataset.with_options(
+                ignore_order,
+            )  # uses data as soon as it streams in, rather than in its original order
         case "xlsx" | "xls" | "xlsm":
             excel = pd.ExcelFile(file)
             sheets = excel.sheet_names
@@ -140,7 +187,7 @@ def load(
                 print(
                     "There is no sheet number "
                     + str(sheet)
-                    + ", please select a valid sheet."
+                    + ", please select a valid sheet.",
                 )
                 raise IndexError
             extract.dropna(how="all", inplace=True)
@@ -149,7 +196,7 @@ def load(
                     True
                     for elem in extract.columns
                     if (type(elem) is str and "Unnamed" in elem)
-                ]
+                ],
             ) == len(extract.columns):
                 extract, extract.columns = (
                     extract.drop(extract.head(1).index),
@@ -170,9 +217,8 @@ def load(
                 firstline = myfile.readline()
                 delimiter = detect(firstline, default=";")
                 myfile.close()
-            print(delimiter)
             extract = pd.read_csv(file, delimiter=delimiter)
-            extract.dropna(how="all", inplace=True) # Drop empty rows
+            extract.dropna(how="all", inplace=True)  # Drop empty rows
             if not has_title:
                 extract = extract.T.reset_index().T.reset_index(drop=True)
             if len(
@@ -180,7 +226,7 @@ def load(
                     True
                     for elem in extract.columns
                     if (type(elem) is str and "Unnamed" in elem)
-                ]
+                ],
             ) == len(extract.columns):
                 extract, extract.columns = (
                     extract.drop(extract.head(1).index),
@@ -188,10 +234,12 @@ def load(
                 )
             if classic_data:
                 if on != "index":
-                    extract.dropna(subset=[on], inplace=True) # Drop rows without label
+                    extract.dropna(subset=[on], inplace=True)  # Drop rows without label
                 extract = caster(extract)
             if has_index:
-                extract = extract.set_index(extract.columns[0]) # Set first column as index
+                extract = extract.set_index(
+                    extract.columns[0],
+                )  # Set first column as index
         case "parquet":
             extract = pq.read_pandas(file).to_pandas()
         case "png" | "jpg":
@@ -221,30 +269,33 @@ def load(
             from librosa import load as librosa_load
 
             return librosa_load(file, sr=None)
+        case "yaml":
+            import yaml
+
+            with open(file) as stream:
+                return yaml.safe_load(stream)
         case None:  # Directory
             return [
                 load(elem, sheet, skiprows, on, classic_data, recursive)
                 for elem in glob.glob(file + "/*")
             ]
         case default:
-            print(
-                f"I don't handle this file format yet ({default}), came back in a decade."
+            raiser(
+                f"I don't handle this file format yet ({default}), came back in a decade.",
             )
-            raise Exception
     if classic_data:
         if on == "index":
             extract = extract[~extract.index.duplicated(keep="first")]
         elif (not (on in extract)) and (on != None):
-            print(
+            raiser(
                 "There is no column name '"
                 + on
                 + "' in the sheet "
                 + str(sheet)
                 + " of the file '"
                 + file
-                + "' so I can't load this file? Try to change the 'on' parameter"
+                + "' so I can't load this file? Try to change the 'on' parameter",
             )
-            raise Exception
         else:
             extract.drop_duplicates(subset=on, keep="last", inplace=True)
         extract.replace("Null", np.nan, inplace=True)
@@ -265,6 +316,8 @@ def save(
         - json
         - xlsx
         - png
+        - yaml
+        - csv
 
     Args:
         file: The file name.
@@ -274,22 +327,19 @@ def save(
     Raises:
         Exception: If the file can't be accessed or the file type is
         not supported.
-
     """
-
     match file.split(".")[-1]:
         case "xlsx":
             try:
                 writer = pd.ExcelWriter(file)
             except PermissionError:
-                print(
+                raiser(
                     "I can't access the file '" + file + "', the "
-                    "solution may be to close it and retry."
+                    "solution may be to close it and retry.",
                 )
-                raise Exception
             try:
                 object_to_save.to_excel(writer, sheet_name=sheet, index=keep_index)
-            except IOError:
+            except OSError:
                 object_to_save.to_excel(writer, sheet_name=sheet, index=True)
             # for column in object_to_save:
             #    column_length = max(object_to_save[column].astype(str).map(len).max(), len(column))
@@ -312,11 +362,15 @@ def save(
         case "json":
             with open(file, "w") as outfile:
                 outfile.write(object_to_save)
+        case "yaml":
+            import yaml
+
+            with open(file, "w") as f:
+                yaml.dump(object_to_save, f)
         case default:
-            print(
-                f"I don't handle this file format yet ({default}), came back in a decade."
+            raiser(
+                f"I don't handle this file format yet ({default}), come back in a decade.",
             )
-            raise Exception
 
 
 def merge(
@@ -328,9 +382,25 @@ def merge(
     how: str = "outer",
     save_file: bool = False,
 ):
+    """Merge two pandas DataFrames either on index or a specific column.
+
+    Args:
+        df : The first DataFrame to be merged.
+        file : The second DataFrame or file to be merged.
+        sheet : The sheet number if `file` is a file name. Defaults to 1.
+        on : The column to merge on. Defaults to "index".
+        skiprows : The number of rows to skip from the file.
+        how : The type of merge to be performed. Defaults to "outer".
+        save_file : Whether to save the merged DataFrame to file. Defaults to False.
+
+    Returns:
+        pd.DataFrame: The merged DataFrame.
+
+    Raises:
+        ValueError: If `df` is not a DataFrame or if the specified `on` column doesn't exist in `file`.
+    """
     if not (type(df) is pd.DataFrame):
-        print("The df parameter must be a DataFrame.")
-        raise Exception
+        raiser("The df parameter must be a DataFrame.")
     if type(file) is pd.DataFrame:
         dataBase = file
     else:
@@ -346,12 +416,11 @@ def merge(
             try:
                 columns.remove(on)
             except ValueError:
-                print(
+                raiser(
                     "You can't merge your data as there are no column '"
                     + on
-                    + "' in your already loaded DataFrame."
+                    + "' in your already loaded DataFrame.",
                 )
-                raise Exception
         if df.empty:
             merge = dataBase.copy()
         elif on != "index":
@@ -420,7 +489,7 @@ def color(
         "LIGHTWHITE",
     ] = None,
 ) -> str:
-    """Format the text to print it in color.
+    r"""Format the text to print it in color.
 
     Args:
         text: The input text to format.
@@ -436,9 +505,7 @@ def color(
 
         >>> "This is a " + color("strange color", "GREEN", "WHITE") + " !"
         'This is a \\x1b[47m\\x1b[32mstrange color\\x1b[0m !'
-
     """
-
     if bg and ("LIGHT" in bg):
         bg += "_EX"
     if "LIGHT" in fg:
@@ -465,7 +532,7 @@ def detect(
     whitelist: Optional[List[str]] = None,
     blacklist: Optional[List[str]] = SILLY_DELIMITERS,
 ) -> Optional[str]:
-    r"""Detects the delimiter used in text formats such as CSV and its many counsins.
+    r"""Detects the delimiter used in text formats.
 
     >>> detect(r"looks|like|the vertical bar\nis|the|delimiter\n")
     '|'
@@ -494,7 +561,6 @@ def detect(
     a list of possible delimiters to check for via the `whitelist` parameter.
     If you don't provide a value, `[',', ';', ':', '|', '\t']` will be checked.
     """
-
     if whitelist:
         candidates = whitelist
     else:

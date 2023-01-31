@@ -1,0 +1,15 @@
+{
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "markdownlint.config": {
+        "MD033": {
+            "allowed_elements": [
+                "nobr",
+                "sup",
+                "a",
+                "img",
+                "center"
+            ]
+        }
+    }
+}
