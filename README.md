@@ -33,7 +33,13 @@ ipoly requires Python 3.10 or higher.
 
 ## Contributing
 
-If you'd like to contribute to the development of ipoly, please see the contributing guidelines.
+We would like to extend our thanks to the following contributors for helping to make ipoly better:
+
+<a href = "https://github.com/Danguilhen/ipoly/graphs/contributors">
+  <img src = "https://contrib.rocks/image?repo = GitHub_username/repository_name"/>
+</a>
+
+If you'd like to contribute to the development of ipoly, please see the [contributing guidelines](<https://ipoly.readthedocs.io/en/latest/CONTRIBUTING.html>).
 
 ## License
 
