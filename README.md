@@ -1,6 +1,8 @@
 ![](logo/banner_transparent_background.png)
 
+<p align="justify">
 `ipoly` (polymorphic inputs) is a Python package aimed at making various data science tasks easier for users. With `ipoly`, data scientists can perform tasks such as web scraping, creating Machine Learning models (Tensorflow, scikit-learn and Transformers), visualising data, handling error exceptions, managing various file types, sending emails and notifications or generating PDF and LaTeX documents, all within Python. The package aims to provide a simple and intuitive interface for these tasks, making it easier for data scientists to focus on what really matters: the data.
+</p>
 
 ### Installation
 
