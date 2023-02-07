@@ -31,9 +31,9 @@ List of package dependencies can be found [here](https://github.com/Danguilhen/i
 
 We would like to extend our thanks to the following contributors for helping to make `ipoly` better:
 
-<a align="center" href="https://github.com/Danguilhen/ipoly/graphs/contributors">
+<p align="center" href="https://github.com/Danguilhen/ipoly/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=Danguilhen/ipoly"/>
-</a>
+</p>
 
 If you'd like to contribute to the development of `ipoly`, please see the [contributing guidelines](<https://ipoly.readthedocs.io/en/latest/contributing.html>).
 
