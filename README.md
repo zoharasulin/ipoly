@@ -1,8 +1,6 @@
 # ipoly
 
-## Introduction
-
-**ipoly** (Polymorphic inputs) is a Python package aimed at making various data science tasks easier for users. With ipoly, data scientists can perform tasks such as web scraping, creating models with Tensorflow, visualizing data, handling exceptions, managing various file types, and sending emails, notifications, and generating PDF or LaTeX documents all within Python. The package aims to provide a simple and intuitive interface for these tasks, making it easier for data scientists to focus on what really matters: the data.
+`ipoly` (polymorphic inputs) is a Python package aimed at making various data science tasks easier for users. With `ipoly`, data scientists can perform tasks such as web scraping, creating Machine Learning models (Tensorflow, scikit-learn and Transformers), visualising data, handling error exceptions, managing various file types, sending emails and notifications or generating PDF and LaTeX documents, all within Python. The package aims to provide a simple and intuitive interface for these tasks, making it easier for data scientists to focus on what really matters: the data.
 
 ## Installation
 
@@ -10,18 +8,15 @@
 pip install ipoly
 ```
 
-## Some Features
+## Some features
 
-- Input polymorphism
-- Type checking
-- Dynamic input capturing
+- Easy handling of file types as inputs
+- Creating Machine Learning models
 - Web scraping
-- Model creation with Tensorflow
-- Data visualization
+- Data visualisation
 - Exception handling
-- Easy handling of file types
-- Sending emails and notifications
 - Generating PDF or LaTeX
+- Sending emails and notifications
 
 ## Documentation
 
@@ -29,18 +24,21 @@ Further documentation can be found [here](<https://ipoly.readthedocs.io/en/lates
 
 ## Requirements
 
-ipoly requires Python 3.10 or higher.
+`ipoly` requires Python 3.10 or higher. <br/>
+List of package dependencies can be found [here](https://github.com/Danguilhen/ipoly/network/dependencies).
 
 ## Contributing
 
-We would like to extend our thanks to the following contributors for helping to make ipoly better:
+We would like to extend our thanks to the following contributors for helping to make `ipoly` better:
 
-<center><a href="https://github.com/Danguilhen/ipoly/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=Danguilhen/ipoly" />
-</a></center>
+<center>
+  <a href="https://github.com/Danguilhen/ipoly/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Danguilhen/ipoly"/>
+  </a>
+</center>
 
-If you'd like to contribute to the development of ipoly, please see the [contributing guidelines](<https://ipoly.readthedocs.io/en/latest/contributing.html>).
+If you'd like to contribute to the development of `ipoly`, please see the [contributing guidelines](<https://ipoly.readthedocs.io/en/latest/contributing.html>).
 
 ## License
 
-ipoly is licensed under the [MIT License](https://ipoly.readthedocs.io/en/latest/license.html).
+`ipoly` is licensed under the [MIT License](https://ipoly.readthedocs.io/en/latest/license.html).
