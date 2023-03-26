@@ -1,5 +1,5 @@
 """Python package making Data Science tasks easier."""
-from typeguard.importhook import install_import_hook
+from typeguard import install_import_hook
 
 with install_import_hook("ipoly"):
     from ipoly.file_management import *

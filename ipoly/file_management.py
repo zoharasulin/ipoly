@@ -13,6 +13,7 @@ from typing import Tuple
 
 import numpy as np
 import pandas as pd
+import polars as pl
 import pyarrow as pa
 import pyarrow.parquet as pq
 import xlrd
@@ -113,6 +114,7 @@ def load(
     has_title: bool = True,
     has_index: bool = True,
     ordered: bool = False,
+    dataframe_engine: Literal["pandas", "polars"] = "pandas",
 ):
     """Load files or folders for most used file types.
 
@@ -144,6 +146,7 @@ def load(
         has_title : Whether the file has a title line. Defaults to True.
         has_index : Whether the file has an index column. Defaults to True.
         ordered : Whether to return the data in the order it was stored. Defaults to False.
+        dataframe_engine : The engine used to manipulate tables.
     """
     if type(file) != str:
         return [
@@ -158,9 +161,9 @@ def load(
         )
     elif len(files) == 0:
         print("Warning : The file '" + file + "' wasn't found !")
-        return pd.DataFrame()
+        return pd.DataFrame() if dataframe_engine else pl.DataFrame()
     if file_format != "tfrec":
-        file = files[0].split(file)[0] + file
+        file = files[0].split(file)[0]
     match file_format:
         case "tfrec":
             import tensorflow as tf
@@ -215,10 +218,12 @@ def load(
         case "csv":
             with open(file) as myfile:
                 firstline = myfile.readline()
-                delimiter = detect(firstline, default=";")
+                sep = detect(firstline, default=";")
                 myfile.close()
-            extract = pd.read_csv(file, delimiter=delimiter)
-            extract.dropna(how="all", inplace=True)  # Drop empty rows
+            if dataframe_engine == "polars":
+                return pl.read_csv(file)
+            extract = pd.read_csv(file, sep=sep)
+            extract = extract.dropna(how="all")  # Drop empty rows
             if not has_title:
                 extract = extract.T.reset_index().T.reset_index(drop=True)
             if len(
@@ -611,3 +616,14 @@ def detect(
         return default
 
     return likely_candidates[0]
+
+
+def delete(name: str | list[str]):
+    """Delete file(s) and/or folder(s) by its name."""
+    from os import remove
+    from shutil import rmtree
+
+    try:
+        rmtree(name)
+    except NotADirectoryError:
+        remove(name)
