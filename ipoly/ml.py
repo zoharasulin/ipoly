@@ -1,5 +1,6 @@
 """Provide routines for Machine Learning."""
 import random
+from os import PathLike
 from typing import Literal
 from typing import Tuple
 
@@ -90,15 +91,6 @@ def get_weighted_loss(pos_weights, neg_weights, epsilon=1e-7):
     return weighted_loss
 
 
-def path(path: str) -> str:
-    r"""Replace \ and / of a path according to the user platform."""
-    from platform import system as ps
-
-    if ps() == "Windows":
-        return path.replace("/", "\\")
-    return path.replace("\\", "/")
-
-
 def interpolator(df: pd.DataFrame) -> pd.DataFrame:
     """Interpolate the missing values.
 
@@ -150,11 +142,14 @@ def prepare_table(
     categories_ratio_threshold: float = 0.1,
     id_correlation_threshold: float = 0.04,
     verbose: bool = False,
-) -> Tuple[pd.DataFrame, pd.DataFrame] | Tuple[
-    pd.DataFrame,
-    pd.DataFrame,
-    pd.DataFrame,
-]:
+) -> (
+    Tuple[pd.DataFrame, pd.DataFrame]
+    | Tuple[
+        pd.DataFrame,
+        pd.DataFrame,
+        pd.DataFrame,
+    ]
+):
     """Prepare the table to feed a ML model.
 
     Args:
@@ -354,13 +349,13 @@ def compile_model(model, is_regression: bool, *args, **kwargs):
 
 
 def load_transformers(
-    overwrite_output_dir: bool,
-    output_dir: str,
+    model_name_or_path: str | PathLike,
     num_labels: int,
-    model_name_or_path,
-    cache_dir,
-    model_revision,
-    use_auth_token: bool,
+    overwrite_output_dir: bool = True,
+    output_dir: str = "training_results",
+    cache_dir=None,
+    model_revision="main",
+    use_auth_token: bool = False,
     tokenizer_name: str = None,
     config_name: str = None,
     config_changes: dict = None,

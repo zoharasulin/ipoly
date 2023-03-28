@@ -77,7 +77,16 @@ def caster(df: pd.DataFrame):
     return df
 
 
-def locate_files(file: str, recursive: bool = True) -> Tuple[List[str], str]:
+def fix_path(path: str) -> str:
+    r"""Replace \ and / of a path according to the user platform."""
+    from platform import system as ps
+
+    if ps() == "Windows":
+        return path.replace("/", "\\")
+    return path.replace("\\", "/")
+
+
+def locate_files(file: str, recursive: bool = True) -> Tuple[List[str], str | None]:
     """Returns a list of file paths matching the given pattern of file name(s).
 
     Args:
@@ -152,6 +161,8 @@ def load(
         return [
             load(elem, sheet, skiprows, on, classic_data, recursive) for elem in file
         ]
+    else:
+        file = fix_path(file)
     files, file_format = locate_files(file, recursive)
     if len(files) > 1 and (file_format != "tfrec"):
         raiser(
@@ -163,7 +174,7 @@ def load(
         print("Warning : The file '" + file + "' wasn't found !")
         return pd.DataFrame() if dataframe_engine else pl.DataFrame()
     if file_format != "tfrec":
-        file = files[0].split(file)[0]
+        file = files[0].split(file)[0] + file
     match file_format:
         case "tfrec":
             import tensorflow as tf
