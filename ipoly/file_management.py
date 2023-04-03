@@ -124,6 +124,8 @@ def load(
     has_index: bool = True,
     ordered: bool = False,
     dataframe_engine: Literal["pandas", "polars"] = "pandas",
+    file_names: bool = False,
+    keep_3D: bool = False,
 ):
     """Load files or folders for most used file types.
 
@@ -156,6 +158,8 @@ def load(
         has_index : Whether the file has an index column. Defaults to True.
         ordered : Whether to return the data in the order it was stored. Defaults to False.
         dataframe_engine : The engine used to manipulate tables.
+        file_names : When loading a folder, return also the file names if enabled.
+        keep_3D : Whether you want to keep 3D for black and white images.
     """
     if type(file) != str:
         return [
@@ -262,10 +266,11 @@ def load(
             from cv2 import imread
 
             img = imread(file)
-            if (img[:, :, 0] == img[:, :, 1]).all() and (
-                img[:, :, 0] == img[:, :, 2]
-            ).all():
-                return img[:, :, 0]
+            if keep_3D:
+                if (img[:, :, 0] == img[:, :, 1]).all() and (
+                    img[:, :, 0] == img[:, :, 2]
+                ).all():
+                    return img[:, :, 0]
             return img
         case "bmp":
             import imageio
@@ -291,6 +296,11 @@ def load(
             with open(file) as stream:
                 return yaml.safe_load(stream)
         case None:  # Directory
+            if file_names:
+                return [
+                    (load(elem, sheet, skiprows, on, classic_data, recursive), elem)
+                    for elem in glob.glob(file + "/*")
+                ]
             return [
                 load(elem, sheet, skiprows, on, classic_data, recursive)
                 for elem in glob.glob(file + "/*")
