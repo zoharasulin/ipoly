@@ -113,6 +113,38 @@ def locate_files(file: str, recursive: bool = True) -> Tuple[List[str], str | No
     return glob.glob(pathname, recursive=recursive), file_format
 
 
+class ndarray(np.ndarray):
+    """Custom ndarray class that inherits from numpy.ndarray.
+
+    This class adds a show() method to display the array as an image using PIL and IPython.
+
+    Attributes:
+        Same attributes as numpy.ndarray
+    """
+
+    def __new__(cls, array):
+        """Create a new instance of the custom ndarray class.
+
+        Args:
+            array : An array, any object exposing the array interface, or an object
+                    whose __array__ method returns an array.
+
+        Returns:
+            ndarray: A new custom ndarray object.
+        """
+        from numpy import asarray
+
+        obj = asarray(array).view(cls)
+        return obj
+
+    def show(self):
+        """Display the array as an image using PIL and IPython."""
+        from PIL.Image import fromarray
+        from IPython.display import display
+
+        display(fromarray(self))
+
+
 def load(
     file: str | Iterable[str],
     sheet: int = 1,
@@ -265,7 +297,7 @@ def load(
         case "png" | "jpg":
             from cv2 import imread
 
-            img = imread(file)
+            img = ndarray(imread(file))
             if keep_3D:
                 if (img[:, :, 0] == img[:, :, 1]).all() and (
                     img[:, :, 0] == img[:, :, 2]
@@ -275,7 +307,7 @@ def load(
         case "bmp":
             import imageio
 
-            return imageio.v3.imread(file)
+            return ndarray(imageio.v3.imread(file))
         case "json":
             import json
 
