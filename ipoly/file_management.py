@@ -13,6 +13,7 @@ from typing import Tuple
 
 import numpy as np
 import pandas as pd
+import polars as pl
 import pyarrow as pa
 import pyarrow.parquet as pq
 import xlrd
@@ -76,7 +77,16 @@ def caster(df: pd.DataFrame):
     return df
 
 
-def locate_files(file: str, recursive: bool = True) -> Tuple[List[str], str]:
+def fix_path(path: str) -> str:
+    r"""Replace \ and / of a path according to the user platform."""
+    from platform import system as ps
+
+    if ps() == "Windows":
+        return path.replace("/", "\\")
+    return path.replace("\\", "/")
+
+
+def locate_files(file: str, recursive: bool = True) -> Tuple[List[str], str | None]:
     """Returns a list of file paths matching the given pattern of file name(s).
 
     Args:
@@ -113,6 +123,9 @@ def load(
     has_title: bool = True,
     has_index: bool = True,
     ordered: bool = False,
+    dataframe_engine: Literal["pandas", "polars"] = "pandas",
+    file_names: bool = False,
+    keep_3D: bool = False,
 ):
     """Load files or folders for most used file types.
 
@@ -144,11 +157,16 @@ def load(
         has_title : Whether the file has a title line. Defaults to True.
         has_index : Whether the file has an index column. Defaults to True.
         ordered : Whether to return the data in the order it was stored. Defaults to False.
+        dataframe_engine : The engine used to manipulate tables.
+        file_names : When loading a folder, return also the file names if enabled.
+        keep_3D : Whether you want to keep 3D for black and white images.
     """
     if type(file) != str:
         return [
             load(elem, sheet, skiprows, on, classic_data, recursive) for elem in file
         ]
+    else:
+        file = fix_path(file)
     files, file_format = locate_files(file, recursive)
     if len(files) > 1 and (file_format != "tfrec"):
         raiser(
@@ -158,7 +176,7 @@ def load(
         )
     elif len(files) == 0:
         print("Warning : The file '" + file + "' wasn't found !")
-        return pd.DataFrame()
+        return pd.DataFrame() if dataframe_engine else pl.DataFrame()
     if file_format != "tfrec":
         file = files[0].split(file)[0] + file
     match file_format:
@@ -215,10 +233,12 @@ def load(
         case "csv":
             with open(file) as myfile:
                 firstline = myfile.readline()
-                delimiter = detect(firstline, default=";")
+                sep = detect(firstline, default=";")
                 myfile.close()
-            extract = pd.read_csv(file, delimiter=delimiter)
-            extract.dropna(how="all", inplace=True)  # Drop empty rows
+            if dataframe_engine == "polars":
+                return pl.read_csv(file)
+            extract = pd.read_csv(file, sep=sep)
+            extract = extract.dropna(how="all")  # Drop empty rows
             if not has_title:
                 extract = extract.T.reset_index().T.reset_index(drop=True)
             if len(
@@ -246,10 +266,11 @@ def load(
             from cv2 import imread
 
             img = imread(file)
-            if (img[:, :, 0] == img[:, :, 1]).all() and (
-                img[:, :, 0] == img[:, :, 2]
-            ).all():
-                return img[:, :, 0]
+            if keep_3D:
+                if (img[:, :, 0] == img[:, :, 1]).all() and (
+                    img[:, :, 0] == img[:, :, 2]
+                ).all():
+                    return img[:, :, 0]
             return img
         case "bmp":
             import imageio
@@ -275,6 +296,11 @@ def load(
             with open(file) as stream:
                 return yaml.safe_load(stream)
         case None:  # Directory
+            if file_names:
+                return [
+                    (load(elem, sheet, skiprows, on, classic_data, recursive), elem)
+                    for elem in glob.glob(file + "/*")
+                ]
             return [
                 load(elem, sheet, skiprows, on, classic_data, recursive)
                 for elem in glob.glob(file + "/*")
@@ -611,3 +637,14 @@ def detect(
         return default
 
     return likely_candidates[0]
+
+
+def delete(name: str | list[str]):
+    """Delete file(s) and/or folder(s) by its name."""
+    from os import remove
+    from shutil import rmtree
+
+    try:
+        rmtree(name)
+    except NotADirectoryError:
+        remove(name)
