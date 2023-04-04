@@ -350,17 +350,17 @@ def compile_model(model, is_regression: bool, *args, **kwargs):
 
 def load_transformers(
     model_name_or_path: str | PathLike,
-    num_labels: int,
+    num_labels: int | None = None,
     overwrite_output_dir: bool = True,
     output_dir: str = "training_results",
     cache_dir=None,
     model_revision="main",
     use_auth_token: bool = False,
-    tokenizer_name: str = None,
-    config_name: str = None,
-    config_changes: dict = None,
+    processor_name: str | None = None,
+    config_name: str | None = None,
+    config_changes: dict | None = None,
 ):
-    """Load a model and a tokenizer from the 'transformers' library.
+    """Load a model and a processor from the 'transformers' library.
 
     Args:
         overwrite_output_dir : Overwrite the previous training.
@@ -370,19 +370,21 @@ def load_transformers(
         cache_dir : The directory for caching the operations.
         model_revision : The revision of the transformer model.
         use_auth_token : Whether to use an authentication token or not.
-        tokenizer_name : The name of the tokenizer from HuggingFace.
+        processor_name : The name of the processor from HuggingFace.
         config_name : The name of the configuration from HuggingFace.
         config_changes : Config cahnges with a different value than the default value of the configuration.
     """
     from transformers import AutoConfig
-    from transformers import AutoTokenizer
-    from transformers import TFAutoModelForSequenceClassification
+    from transformers import AutoProcessor
+    from transformers import TFAutoModel
+    from transformers import logging
     from transformers.utils import CONFIG_NAME, TF2_WEIGHTS_NAME
     from os import listdir
     from os.path import isdir
 
-    if not tokenizer_name:
-        tokenizer_name = model_name_or_path
+    logging.set_verbosity_error()
+    if not processor_name:
+        processor_name = model_name_or_path
     if not config_name:
         config_name = model_name_or_path
 
@@ -419,8 +421,8 @@ def load_transformers(
             revision=model_revision,
             use_auth_token=True if use_auth_token else None,
         )
-    tokenizer = AutoTokenizer.from_pretrained(
-        tokenizer_name if tokenizer_name else model_name_or_path,
+    processor = AutoProcessor.from_pretrained(
+        processor_name if processor_name else model_name_or_path,
         cache_dir=cache_dir,
         revision=model_revision,
         use_auth_token=True if use_auth_token else None,
@@ -433,7 +435,7 @@ def load_transformers(
         for key, value in config_changes.items():
             config.__setattr__(key, value)
     try:
-        model = TFAutoModelForSequenceClassification.from_pretrained(
+        model = TFAutoModel.from_pretrained(
             model_path,
             config=config,
             cache_dir=cache_dir,
@@ -441,7 +443,7 @@ def load_transformers(
             use_auth_token=True if use_auth_token else None,
         )
     except OSError:
-        model = TFAutoModelForSequenceClassification.from_pretrained(
+        model = TFAutoModel.from_pretrained(
             model_path,
             config=config,
             from_pt=True,
@@ -449,7 +451,8 @@ def load_transformers(
             revision=model_revision,
             use_auth_token=True if use_auth_token else None,
         )
-    return model, tokenizer
+    logging.set_verbosity_warning()
+    return model, processor
 
 
 def flatten(l):
