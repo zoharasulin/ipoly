@@ -16,7 +16,9 @@ readme = "README.md"
 dynamic = ["version", "dependencies"]
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
-
+authors = [
+  {name = "Thomas Danguilhen"},
+]
 [tool.black]
 line-length = 88  # Specify the line length
 target-version = ['py310']  # Specify your Python version
